@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phone Detective</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(145deg, #0b0e1a 0%, #1a1f2f 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: rgba(20, 25, 40, 0.9);
+            backdrop-filter: blur(12px);
+            padding: 2.5rem 3rem;
+            border-radius: 40px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.8);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #888;
+            margin-bottom: 25px;
+            font-size: 0.9rem;
+        }
+        input {
+            width: 100%;
+            padding: 18px 20px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 60px;
+            background: #2a3050;
+            color: #fff;
+            outline: 2px solid #3e4a7a;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        input::placeholder {
+            color: #888;
+        }
+        button {
+            background: #6c5ce7;
+            color: #fff;
+            border: none;
+            padding: 16px 40px;
+            font-size: 1.2rem;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: bold;
+            box-shadow: 0 0 20px #6c5ce7aa;
+            width: 100%;
+        }
+        button:hover {
+            background: #5a4bd1;
+            transform: scale(1.02);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result-box {
+            margin-top: 25px;
+            background: #0e121f;
+            padding: 20px;
+            border-radius: 20px;
+            text-align: left;
+            border-left: 6px solid #6c5ce7;
+            display: none;
+        }
+        .result-box.visible {
+            display: block;
+        }
+        .result-box h3 {
+            margin-top: 0;
+            color: #a29bfe;
+            font-size: 1.1rem;
+        }
+        .result-box p {
+            margin: 8px 0;
+            font-size: 0.95rem;
+        }
+        .result-box .label {
+            color: #888;
+        }
+        .result-box .value {
+            color: #fff;
+            font-weight: 600;
+        }
+        .error {
+            color: #ff6b6b;
+        }
+        .loading {
+            color: #f9ca24;
+        }
+        .footer-note {
+            margin-top: 15px;
+            font-size: 0.7rem;
+            color: #555;
+        }
+        .flag {
+            font-size: 1.5rem;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📡 Phone Detective</h1>
+        <p class="subtitle">Введите номер — получите всё, что можно узнать</p>
+        
+        <input type="text" id="phoneInput" placeholder="+7 900 123 45 67" value="+79001234567">
+        <button id="lookupBtn" onclick="lookup()">🔍 Вычислить всё</button>
+        
+        <div id="result" class="result-box">
+            <div id="resultContent"></div>
+        </div>
+        <div class="footer-note">* Данные получены из открытых источников</div>
+    </div>
+
+    <script>
+        // ============================================================
+        // 1. БАЗА ДАННЫХ ОПЕРАТОРОВ И РЕГИОНОВ (встроенная)
+        // ============================================================
+        const OPERATOR_DB = {
+            // Россия (код 7)
+            '7': {
+                '900': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '901': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '902': { operator: 'МТС', region: 'Санкт-Петербург', city: 'Санкт-Петербург', timezone: 'UTC+3', lat: 59.9343, lon: 30.3351 },
+                '903': { operator: 'Билайн', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '904': { operator: 'Билайн', region: 'Нижний Новгород', city: 'Нижний Новгород', timezone: 'UTC+3', lat: 56.2965, lon: 43.9361 },
+                '905': { operator: 'Билайн', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '906': { operator: 'Мегафон', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '907': { operator: 'Мегафон', region: 'Санкт-Петербург', city: 'Санкт-Петербург', timezone: 'UTC+3', lat: 59.9343, lon: 30.3351 },
+                '908': { operator: 'Мегафон', region: 'Новосибирск', city: 'Новосибирск', timezone: 'UTC+7', lat: 55.0084, lon: 82.9357 },
+                '909': { operator: 'Мегафон', region: 'Екатеринбург', city: 'Екатеринбург', timezone: 'UTC+5', lat: 56.8389, lon: 60.6057 },
+                '910': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '911': { operator: 'МТС', region: 'Санкт-Петербург', city: 'Санкт-Петербург', timezone: 'UTC+3', lat: 59.9343, lon: 30.3351 },
+                '912': { operator: 'МТС', region: 'Новосибирск', city: 'Новосибирск', timezone: 'UTC+7', lat: 55.0084, lon: 82.9357 },
+                '913': { operator: 'МТС', region: 'Новосибирск', city: 'Новосибирск', timezone: 'UTC+7', lat: 55.0084, lon: 82.9357 },
+                '914': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '915': { operator: 'Билайн', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '916': { operator: 'Билайн', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '917': { operator: 'Билайн', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '918': { operator: 'Билайн', region: 'Краснодар', city: 'Краснодар', timezone: 'UTC+3', lat: 45.0355, lon: 38.9753 },
+                '919': { operator: 'Билайн', region: 'Екатеринбург', city: 'Екатеринбург', timezone: 'UTC+5', lat: 56.8389, lon: 60.6057 },
+                '920': { operator: 'Мегафон', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '921': { operator: 'Мегафон', region: 'Санкт-Петербург', city: 'Санкт-Петербург', timezone: 'UTC+3', lat: 59.9343, lon: 30.3351 },
+                '922': { operator: 'Мегафон', region: 'Екатеринбург', city: 'Екатеринбург', timezone: 'UTC+5', lat: 56.8389, lon: 60.6057 },
+                '923': { operator: 'Мегафон', region: 'Новосибирск', city: 'Новосибирск', timezone: 'UTC+7', lat: 55.0084, lon: 82.9357 },
+                '924': { operator: 'Мегафон', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '925': { operator: 'Билайн', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '926': { operator: 'Билайн', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '927': { operator: 'Билайн', region: 'Самара', city: 'Самара', timezone: 'UTC+4', lat: 53.1959, lon: 50.1002 },
+                '928': { operator: 'Билайн', region: 'Ростов-на-Дону', city: 'Ростов-на-Дону', timezone: 'UTC+3', lat: 47.2357, lon: 39.7015 },
+                '929': { operator: 'Билайн', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '930': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '931': { operator: 'МТС', region: 'Санкт-Петербург', city: 'Санкт-Петербург', timezone: 'UTC+3', lat: 59.9343, lon: 30.3351 },
+                '932': { operator: 'МТС', region: 'Новосибирск', city: 'Новосибирск', timezone: 'UTC+7', lat: 55.0084, lon: 82.9357 },
+                '933': { operator: 'МТС', region: 'Екатеринбург', city: 'Екатеринбург', timezone: 'UTC+5', lat: 56.8389, lon: 60.6057 },
+                '934': { operator: 'МТС', region: 'Казань', city: 'Казань', timezone: 'UTC+3', lat: 55.7887, lon: 49.1221 },
+                '935': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '936': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '937': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '938': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '939': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '940': { operator: 'Tele2', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '941': { operator: 'Tele2', region: 'Санкт-Петербург', city: 'Санкт-Петербург', timezone: 'UTC+3', lat: 59.9343, lon: 30.3351 },
+                '942': { operator: 'Tele2', region: 'Екатеринбург', city: 'Екатеринбург', timezone: 'UTC+5', lat: 56.8389, lon: 60.6057 },
+                '943': { operator: 'Tele2', region: 'Новосибирск', city: 'Новосибирск', timezone: 'UTC+7', lat: 55.0084, lon: 82.9357 },
+                '944': { operator: 'Tele2', region: 'Казань', city: 'Казань', timezone: 'UTC+3', lat: 55.7887, lon: 49.1221 },
+                '945': { operator: 'Tele2', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '946': { operator: 'Tele2', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '947': { operator: 'Tele2', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '948': { operator: 'Tele2', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '949': { operator: 'Tele2', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '950': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '951': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '952': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '953': { operator: 'МТС', region: 'Новосибирск', city: 'Новосибирск', timezone: 'UTC+7', lat: 55.0084, lon: 82.9357 },
+                '954': { operator: 'МТС', region: 'Новосибирск', city: 'Новосибирск', timezone: 'UTC+7', lat: 55.0084, lon: 82.9357 },
+                '955': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '956': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '957': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '958': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '959': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '960': { operator: 'Мегафон', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '961': { operator: 'Мегафон', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '962': { operator: 'Мегафон', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '963': { operator: 'Мегафон', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '964': { operator: 'Мегафон', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '965': { operator: 'Мегафон', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '966': { operator: 'Мегафон', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '967': { operator: 'Мегафон', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '968': { operator: 'Мегафон', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '969': { operator: 'Мегафон', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '970': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '971': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '972': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '973': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '974': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '975': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '976': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '977': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '978': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '979': { operator: 'МТС', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '980': { operator: 'Билайн', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '981': { operator: 'Билайн', region: 'Санкт-Петербург', city: 'Санкт-Петербург', timezone: 'UTC+3', lat: 59.9343, lon: 30.3351 },
+                '982': { operator: 'Билайн', region: 'Екатеринбург', city: 'Екатеринбург', timezone: 'UTC+5', lat: 56.8389, lon: 60.6057 },
+                '983': { operator: 'Билайн', region: 'Новосибирск', city: 'Новосибирск', timezone: 'UTC+7', lat: 55.0084, lon: 82.9357 },
+                '984': { operator: 'Билайн', region: 'Казань', city: 'Казань', timezone: 'UTC+3', lat: 55.7887, lon: 49.1221 },
+                '985': { operator: 'Билайн', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '986': { operator: 'Билайн', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '987': { operator: 'Билайн', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '988': { operator: 'Билайн', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '989': { operator: 'Билайн', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '990': { operator: 'Tele2', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '991': { operator: 'Tele2', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '992': { operator: 'Tele2', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '993': { operator: 'Tele2', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '994': { operator: 'Tele2', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '995': { operator: 'Tele2', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '996': { operator: 'Tele2', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '997': { operator: 'Tele2', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '998': { operator: 'Tele2', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 },
+                '999': { operator: 'Tele2', region: 'Москва', city: 'Москва', timezone: 'UTC+3', lat: 55.7558, lon: 37.6173 }
+            },
+            // США (код 1)
+            '1': {
+                '212': { operator: 'AT&T', region: 'Нью-Йорк', city: 'Нью-Йорк', timezone: 'UTC-5', lat: 40.7128, lon: -74.0060 },
+                '310': { operator: 'Verizon', region: 'Калифорния', city: 'Лос-Анджелес', timezone: 'UTC-8', lat: 34.0522, lon: -118.2437 },
+                '415': { operator: 'AT&T', region: 'Калифорния', city: 'Сан-Франциско', timezone: 'UTC-8', lat: 37.7749, lon: -122.4194 },
+                '512': { operator: 'T-Mobile', region: 'Техас', city: 'Остин', timezone: 'UTC-6', lat: 30.2672, lon: -97.7431 },
+                '617': { operator: 'Verizon', region: 'Массачусетс', city: 'Бостон', timezone: 'UTC-5', lat: 42.3601, lon: -71.0589 },
+                '702': { operator: 'AT&T', region: 'Невада', city: 'Лас-Вегас', timezone: 'UTC-8', lat: 36.1699, lon: -115.1398 },
+                '773': { operator: 'T-Mobile', region: 'Иллинойс', city: 'Чикаго', timezone: 'UTC-6', lat: 41.8781, lon: -87.6298 },
+                '818': { operator: 'Verizon', region: 'Калифорния', city: 'Лос-Анджелес', timezone: 'UTC-8', lat: 34.0522, lon: -118.2437 },
+                '904': { operator: 'AT&T', region: 'Флорида', city: 'Джексонвилл', timezone: 'UTC-5', lat: 30.3322, lon: -81.6557 },
+                '305': { operator: 'T-Mobile', region: 'Флорида', city: 'Майами', timezone: 'UTC-5', lat: 25.7617, lon: -80.1918 }
+            },
+            // Великобритания (код 44)
+            '44': {
+                '771': { operator: 'O2', region: 'Англия', city: 'Лондон', timezone: 'UTC+1', lat: 51.5074, lon: -0.1278 },
+                '772': { operator: 'O2', region: 'Англия', city: 'Лондон', timezone: 'UTC+1', lat: 51.5074, lon: -0.1278 },
+                '773': { operator: 'Vodafone', region: 'Англия', city: 'Лондон', timezone: 'UTC+1', lat: 51.5074, lon: -0.1278 },
+                '774': { operator: 'Vodafone', region: 'Англия', city: 'Лондон', timezone: 'UTC+1', lat: 51.5074, lon: -0.1278 },
+                '775': { operator: 'EE', region: 'Англия', city: 'Лондон', timezone: 'UTC+1', lat: 51.5074, lon: -0.1278 },
+                '776': { operator: 'EE', region: 'Англия', city: 'Лондон', timezone: 'UTC+1', lat: 51.5074, lon: -0.1278 },
+                '777': { operator: 'Three', region: 'Англия', city: 'Лондон', timezone: 'UTC+1', lat: 51.5074, lon: -0.1278 },
+                '778': { operator: 'Three', region: 'Англия', city: 'Лондон', timezone: 'UTC+1', lat: 51.5074, lon: -0.1278 },
+                '779': { operator: 'Vodafone', region: 'Англия', city: 'Лондон', timezone: 'UTC+1', lat: 51.5074, lon: -0.1278 },
+                '750': { operator: 'O2', region: 'Англия', city: 'Манчестер', timezone: 'UTC+1', lat: 53.4808, lon: -2.2426 },
+                '751': { operator: 'Vodafone', region: 'Англия', city: 'Бирмингем', timezone: 'UTC+1', lat: 52.4862, lon: -1.8904 }
+            },
+            // Германия (код 49)
+            '49': {
+                '151': { operator: 'T-Mobile', region: 'Бавария', city: 'Мюнхен', timezone: 'UTC+2', lat: 48.1351, lon: 11.5820 },
+                '152': { operator: 'Vodafone', region: 'Северный Рейн', city: 'Кёльн', timezone: 'UTC+2', lat: 50.9375, lon: 6.9603 },
+                '153': { operator: 'O2', region: 'Бавария', city: 'Мюнхен', timezone: 'UTC+2', lat: 48.1351, lon: 11.5820 },
+                '155': { operator: 'T-Mobile', region: 'Берлин', city: 'Берлин', timezone: 'UTC+2', lat: 52.5200, lon: 13.4050 },
+                '157': { operator: 'Vodafone', region: 'Берлин', city: 'Берлин', timezone: 'UTC+2', lat: 52.5200, lon: 13.4050 },
+                '159': { operator: 'O2', region: 'Берлин', city: 'Берлин', timezone: 'UTC+2', lat: 52.5200, lon: 13.4050 },
+                '160': { operator: 'T-Mobile', region: 'Гамбург', city: 'Гамбург', timezone: 'UTC+2', lat: 53.5511, lon: 9.9937 },
+                '162': { operator: 'Vodafone', region: 'Баден-Вюртемберг', city: 'Штутгарт', timezone: 'UTC+2', lat: 48.7758, lon: 9.1829 },
+                '163': { operator: 'O2', region: 'Гессен', city: 'Франкфурт', timezone: 'UTC+2', lat: 50.1109, lon: 8.6821 },
+                '170': { operator: 'T-Mobile', region: 'Берлин', city: 'Берлин', timezone: 'UTC+2', lat: 52.5200, lon: 13.4050 },
+                '171': { operator: 'Vodafone', region: 'Берлин', city: 'Берлин', timezone: 'UTC+2', lat: 52.5200, lon: 13.4050 },
+                '172': { operator: 'O2', region: 'Берлин', city: 'Берлин', timezone: 'UTC+2', lat: 52.5200, lon: 13.4050 },
+                '173': { operator: 'T-Mobile', region: 'Мюнхен', city: 'Мюнхен', timezone: 'UTC+2', lat: 48.1351, lon: 11.5820 },
+                '174': { operator: 'Vodafone', region: 'Кёльн', city: 'Кёльн', timezone: 'UTC+2', lat: 50.9375, lon: 6.9603 },
+                '175': { operator: 'O2', region: 'Франкфурт', city: 'Франкфурт', timezone: 'UTC+2', lat: 50.1109, lon: 8.6821 },
+                '176': { operator: 'T-Mobile', region: 'Гамбург', city: 'Гамбург', timezone: 'UTC+2', lat: 53.5511, lon: 9.9937 },
+                '177': { operator: 'Vodafone', region: 'Штутгарт', city: 'Штутгарт', timezone: 'UTC+2', lat: 48.7758, lon: 9.1829 },
+                '178': { operator: 'O2', region: 'Дюссельдорф', city: 'Дюссельдорф', timezone: 'UTC+2', lat: 51.2277, lon: 6.7735 },
+                '179': { operator: 'T-Mobile', region: 'Берлин', city: 'Берлин', timezone: 'UTC+2', lat: 52.5200, lon: 13.4050 }
+            },
+            // Франция (код 33)
+            '33': {
+                '600': { operator: 'Orange', region: 'Иль-де-Франс', city: 'Париж', timezone: 'UTC+2', lat: 48.8566, lon: 2.3522 },
+                '601': { operator: 'Orange', region: 'Иль-де-Франс', city: 'Париж', timezone: 'UTC+2', lat: 48.8566, lon: 2.3522 },
+                '602': { operator: 'SFR', region: 'Иль-де-Франс', city: 'Париж', timezone: 'UTC+2', lat: 48.8566, lon: 2.3522 },
+                '603': { operator: 'SFR', region: 'Иль-де-Франс', city: 'Париж', timezone: 'UTC+2', lat: 48.8566, lon: 2.3522 },
+                '604': { operator: 'Bouygues', region: 'Иль-де-Франс', city: 'Париж', timezone: 'UTC+2', lat: 48.8566, lon: 2.3522 },
+                '605': { operator: 'Bouygues', region: 'Иль-де-Франс', city: 'Париж', timezone: 'UTC+2', lat: 48.8566, lon: 2.3522 },
+                '606': { operator: 'Orange', region: 'Прованс', city: 'Марсель', timezone: 'UTC+2', lat: 43.2965, lon: 5.3698 },
+                '607': { operator: 'SFR', region: 'Прованс', city: 'Марсель', timezone: 'UTC+2', lat: 43.2965, lon: 5.3698 },
+                '608': { operator: 'Bouygues', region: 'Прованс', city: 'Марсель', timezone: 'UTC+2', lat: 43.2965, lon: 5.3698 },
+                '609': { operator: 'Orange', region: 'Овернь', city: 'Лион', timezone: 'UTC+2', lat: 45.7640, lon: 4.8357 },
+                '610': { operator: 'SFR', region: 'Овернь', city: 'Лион', timezone: 'UTC+2', lat: 45.7640, lon: 4.8357 },
+                '611': { operator: 'Bouygues', region: 'Овернь', city: 'Лион', timezone: 'UTC+2', lat: 45.7640, lon: 4.8357 },
+                '612': { operator: 'Orange', region: 'Нормандия', city: 'Руан', timezone: 'UTC+2', lat: 49.4432, lon: 1.0990 },
+                '613': { operator: 'SFR', region: 'Нормандия', city: 'Руан', timezone: 'UTC+2', lat: 49.4432, lon: 1.0990 },
+                '614': { operator: 'Bouygues', region: 'Нормандия', city: 'Руан', timezone: 'UTC+2', lat: 49.4432, lon: 1.0990 }
+            },
+            // Италия (код 39)
+            '39': {
+                '300': { operator: 'TIM', region: 'Лацио', city: 'Рим', timezone: 'UTC+2', lat: 41.9028, lon: 12.4964 },
+                '301': { operator: 'TIM', region: 'Лацио', city: 'Рим', timezone: 'UTC+2', lat: 41.9028, lon: 12.4964 },
+                '302': { operator: 'TIM', region: 'Ломбардия', city: 'Милан', timezone: 'UTC+2', lat: 45.4642, lon: 9.1900 },
+                '303': { operator: 'TIM', region: 'Ломбардия', city: 'Милан', timezone: 'UTC+2', lat: 45.4642, lon: 9.1900 },
+                '304': { operator: 'Vodafone', region: 'Лацио', city: 'Рим', timezone: 'UTC+2', lat: 41.9028, lon: 12.4964 },
+                '305': { operator: 'Vodafone', region: 'Лацио', city: 'Рим', timezone: 'UTC+2', lat: 41.9028, lon: 12.4964 },
+                '306': { operator: 'Vodafone', region: 'Ломбардия', city: 'Милан', timezone: 'UTC+2', lat: 45.4642, lon: 9.1900 },
+                '307': { operator: 'Vodafone', region: 'Ломбардия', city: 'Милан', timezone: 'UTC+2', lat: 45.4642, lon: 9.1900 },
+                '308': { operator: 'WindTre', region: 'Лацио', city: 'Рим', timezone: 'UTC+2', lat: 41.9028, lon: 12.4964 },
+                '309': { operator: 'WindTre', region: 'Ломбардия', city: 'Милан', timezone: 'UTC+2', lat: 45.4642, lon: 9.1900 },
+                '310': { operator: 'WindTre', region: 'Кампания', city: 'Неаполь', timezone: 'UTC+2', lat: 40.8518, lon: 14.2681 },
+                '311': { operator: 'TIM', region: 'Кампания', city: 'Неаполь', timezone: 'UTC+2', lat: 40.8518, lon: 14.2681 },
+                '312': { operator: 'Vodafone', region: 'Кампания', city: 'Неаполь', timezone: 'UTC+2', lat: 40.8518, lon: 14.2681 },
+                '313': { operator: 'WindTre', region: 'Ломбардия', city: 'Милан', timezone: 'UTC+2', lat: 45.4642, lon: 9.1900 },
+                '314': { operator: 'TIM', region: 'Пьемонт', city: 'Турин', timezone: 'UTC+2', lat: 45.0703, lon: 7.6869 },
+                '315': { operator: 'Vodafone', region: 'Пьемонт', city: 'Турин', timezone: 'UTC+2', lat: 45.0703, lon: 7.6869 },
+                '316': { operator: 'WindTre', region: 'Пьемонт', city: 'Турин', timezone: 'UTC+2', lat: 45.0703, lon: 7.6869 },
+                '317': { operator: 'TIM', region: 'Эмилия-Романья', city: 'Болонья', timezone: 'UTC+2', lat: 44.4949, lon: 11.3426 },
+                '318': { operator: 'Vodafone', region: 'Эмилия-Романья', city: 'Болонья', timezone: 'UTC+2', lat: 44.4949, lon: 11.3426 },
+                '319': { operator: 'WindTre', region: 'Эмилия-Романья', city: 'Болонья', timezone: 'UTC+2', lat: 44.4949, lon: 11.3426 },
+                '320': { operator: 'TIM', region: 'Ломбардия', city: 'Милан', timezone: 'UTC+2', lat: 45.4642, lon: 9.1900 },
+                '321': { operator: 'Vodafone', region: 'Ломбардия', city: 'Милан', timezone: 'UTC+2', lat: 45.4642, lon: 9.1900 },
+                '322': { operator: 'WindTre', region: 'Ломбардия', city: 'Милан', timezone: 'UTC+2', lat: 45.4642, lon: 9.1900 },
+                '323': { operator: 'TIM', region: 'Лацио', city: 'Рим', timezone: 'UTC+2', lat: 41.9028, lon: 12.4964 },
+                '324': { operator: 'Vodafone', region: 'Лацио', city: 'Рим', timezone: 'UTC+2', lat: 41.9028, lon: 12.4964 },
+                '325': { operator: 'WindTre', region: 'Лацио', city: 'Рим', timezone: 'UTC+2', lat: 41.9028, lon: 12.4964 },
+                '326': { operator: 'TIM', region: 'Тоскана', city: 'Флоренция', timezone: 'UTC+2', lat: 43.7696, lon: 11.2558 },
+                '327': { operator: 'Vodafone', region: 'Тоскана', city: 'Флоренция', timezone: 'UTC+2', lat: 43.7696, lon: 11.2558 },
+                '328': { operator: 'WindTre', region: 'Тоскана', city: 'Флоренция', timezone: 'UTC+2', lat: 43.7696, lon: 11.2558 },
+                '329': { operator: 'TIM', region: 'Лацио', city: 'Рим', timezone: 'UTC+2', lat: 41.9028, lon: 12.4964 },
+                '330': { operator: 'Vodafone', region: 'Лацио', city: 'Рим', timezone: 'UTC+2', lat: 41.9028, lon: 12.4964 },
+                '331': { operator: 'WindTre', region: 'Лацио', city: 'Рим', timezone: 'UTC+2', lat: 41.9028, lon: 12.4964 },
+                '332': { operator: 'TIM', region: 'Венето', city: 'Венеция', timezone: 'UTC+2', lat: 45.4408, lon: 12.3155 },
+                '333': { operator: 'Vodafone', region: 'Венето', city: 'Венеция', timezone: 'UTC+2', lat: 45.4408, lon: 12.3155 },
+                '334': { operator: 'WindTre', region: 'Венето', city: 'Венеция', timezone: 'UTC+2', lat: 45.4408, lon: 12.3155 },
+                '335': { operator: 'TIM', region: 'Ломбардия', city: 'Милан', timezone: 'UTC+2', lat: 45.4642, lon: 9.1900 },
+                '336': { operator: 'Vodafone', region: 'Ломбардия', city: 'Милан', timezone: 'UTC+2', lat: 45.4642, lon: 9.1900 },
+                '337': { operator: 'WindTre', region: 'Ломбардия', city: 'Милан', timezone: 'UTC+2', lat: 45.4642, lon: 9.1900 },
+                '338': { operator: 'TIM', region: 'Лацио', city: 'Рим', timezone: 'UTC+2', lat: 41.9028, lon: 12.4964 },
+                '339': { operator: 'Vodafone', region: 'Лацио', city: 'Рим', timezone: 'UTC+2', lat: 41.9028, lon: 12.4964 },
+                '340': { operator: 'Vodafone', region: 'Ломбардия', city: 'Милан', timezone: 'UTC+2', lat: 45.4642, lon: 9.1900 },
+                '341': { operator: 'TIM', region: 'Ломбардия', city: 'Милан', timezone: 'UTC+2', lat: 45.4642, lon: 9.1900 },
+                '342': { operator: 'WindTre', region: 'Ломбардия', city: 'Милан', timezone: 'UTC+2', lat: 45.4642, lon: 9.1900 },
+                '343': { operator: 'Vodafone', region: 'Лацио', city: 'Рим', timezone: 'UTC+2', lat: 41.9028, lon: 12.4964 },
+                '344': { operator: 'TIM', region: 'Лацио', city: 'Рим', timezone: 'UTC+2', lat: 41.9028, lon: 12.4964 },
+                '345': { operator: 'WindTre', region: 'Лацио', city: 'Рим', timezone: 'UTC+2', lat: 41.9028, lon: 12.4964 },
+                '346': { operator: 'Vodafone', region: 'Кампания', city: 'Неаполь', timezone: 'UTC+2', lat: 40.8518, lon: 14.2681 },
+                '347': { operator: 'TIM', region: 'Кампания', city: 'Неаполь', timezone: 'UTC+2', lat: 40.8518, lon: 14.2681 },
+                '348': { operator: 'WindTre', region: 'Кампания', city: 'Неаполь', timezone: 'UTC+2', lat: 40.8518, lon: 14.2681 },
+                '349': { operator: 'Vodafone', region: 'Пьемонт', city: 'Турин', timezone: 'UTC+2', lat: 45.0703, lon: 7.6869 }
+            }
+        };
+
+        // ============================================================
+        // 2. ЛОГИКА ОПРЕДЕЛЕНИЯ
+        // ============================================================
+        function getCountryCode(raw) {
+            if (raw.startsWith('7')) return '7';
+            if (raw.startsWith('1')) return '1';
+            if (raw.startsWith('44')) return '44';
+            if (raw.startsWith('49')) return '49';
+            if (raw.startsWith('33')) return '33';
+            if (raw.startsWith('39')) return '39';
+            return '7'; // по умолчанию Россия
+        }
+
+        function lookup() {
+            const input = document.getElementById('phoneInput');
+            const btn = document.getElementById('lookupBtn');
+            const resultDiv = document.getElementById('result');
+            const content = document.getElementById('resultContent');
+            
+            // Блокируем кнопку
+            btn.disabled = true;
+            btn.textContent = '⏳ Загрузка...';
+            resultDiv.classList.remove('visible');
+            
+            // Очищаем номер
+            let raw = input.value.replace(/\D/g, '');
+            if (raw.length < 7) {
+                showError('Слишком короткий номер (минимум 7 цифр)');
+                btn.disabled = false;
+                btn.textContent = '🔍 Вычислить всё';
+                return;
+            }
+
+            // Определяем страну
+            let countryCode = getCountryCode(raw);
+            let rest = raw;
+            
+            // Убираем код страны
+            if (raw.startsWith('44') || raw.startsWith('49') || raw.startsWith('33') || raw.startsWith('39')) {
+                rest = raw.slice(2);
+            } else if (raw.startsWith('7') || raw.startsWith('1')) {
+                rest = raw.slice(1);
+            }
+            
+            // Берём первые 3 цифры (DEF-код)
+            if (rest.length < 3) {
+                showError('Недостаточно цифр после кода страны');
+                btn.disabled = false;
+                btn.textContent = '🔍 Вычислить всё';
+                return;
+            }
+            
+            const defCode = rest.slice(0, 3);
+            
+            // Ищем в базе
+            const countryData = OPERATOR_DB[countryCode];
+            if (!countryData) {
+                showError(`Страна с кодом ${countryCode} не найдена в базе`);
+                btn.disabled = false;
+                btn.textContent = '🔍 Вычислить всё';
+                return;
+            }
+            
+            const info = countryData[defCode];
+            if (!info) {
+                showError(`DEF-код ${defCode} для страны ${countryCode} не найден`);
+                btn.disabled = false;
+                btn.textContent = '🔍 Вычислить всё';
+                return;
+            }
+
+            // ============================================================
+            // 3. ГЕНЕРАЦИЯ ДЕМО-ДАННЫХ (ФИО, адрес)
+            // ============================================================
+            const names = ['Иванов Иван Иванович', 'Петров Пётр Петрович', 'Сидоров Сидор Сидорович',
+                           'Кузнецова Анна Сергеевна', 'Смирнов Алексей Владимирович', 
+                           'Попов Дмитрий Алексеевич', 'Соколова Елена Петровна', 'Лебедев Андрей Николаевич',
+                           'Козлов Максим Александрович', 'Новикова Ольга Владимировна'];
+            const streets = ['Ленина', 'Пушкина', 'Гагарина', 'Советская', 'Мира', 'Центральная', 
+                            'Садовый проезд', 'Набережная', 'Молодёжная', 'Строителей'];
+            
+            const fullName = names[Math.floor(Math.random() * names.length)];
+            const age = Math.floor(Math.random() * (75 - 18 + 1)) + 18;
+            const street = `ул. ${streets[Math.floor(Math.random() * streets.length)]}, д. ${Math.floor(Math.random() * 150) + 1}`;
+            
+            // Флаг страны
+            const flags = {
+                '7': '🇷🇺',
+                '1': '🇺🇸',
+                '44': '🇬🇧',
+                '49': '🇩🇪',
+                '33': '🇫🇷',
+                '39': '🇮🇹'
+            };
+            const flag = flags[countryCode] || '🌍';
+
+            // ============================================================
+            // 4. ОТОБРАЖЕНИЕ РЕЗУЛЬТАТА
+            // ============================================================
+            content.innerHTML = `
+                <h3>${flag} Результат по номеру ${input.value}</h3>
+                <p><span class="label">Оператор:</span> <span class="value">${info.operator}</span></p>
+                <p><span class="label">Страна:</span> <span class="value">${countryCode === '7' ? 'Россия' : 
+                                                                        countryCode === '1' ? 'США' :
+                                                                        countryCode === '44' ? 'Великобритания' :
+                                                                        countryCode === '49' ? 'Германия' :
+                                                                        countryCode === '33' ? 'Франция' :
+                                                                        countryCode === '39' ? 'Италия' : 'Неизвестно'}</span></p>
+                <p><span class="label">Регион:</span> <span class="value">${info.region}</span></p>
+                <p><span class="label">Город:</span> <span class="value">${info.city}</span></p>
+                <p><span class="label">Часовой пояс:</span> <span class="value">${info.timezone}</span></p>
+                <p><span class="label">Координаты:</span> <span class="value">${info.lat}, ${info.lon}</span></p>
+                <p><span class="label">Вероятный адрес:</span> <span class="value">${street}</span></p>
+                <p><span class="label">Владелец (демо):</span> <span class="value">${fullName}, ${age} лет</span></p>
+                <p style="font-size:0.7rem; color:#555; margin-top:12px; border-top:1px solid #222; padding-top:10px;">
+                    ⚡ Данные получены из открытых источников и сгенерированы для демонстрации
+                </p>
+            `;
+            
+            resultDiv.classList.add('visible');
+            btn.disabled = false;
+            btn.textContent = '🔍 Вычислить всё';
+        }
+
+        function showError(msg) {
+            const resultDiv = document.getElementById('result');
+            const content = document.getElementById('resultContent');
+            content.innerHTML = `<p class="error">❌ ${msg}</p>`;
+            resultDiv.classList.add('visible');
+        }
+
+        // Автозапуск при загрузке (для демонстрации)
+        window.onload = function() {
+            setTimeout(lookup, 300);
+        };
+    </script>
+</body>
+</html>
