@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💀 ULTIMATE STRESSER</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>💀 ULTIMATE STRESSER</h1>
+            <div class="status-badge" id="statusBadge">⚡ ГОТОВ</div>
+        </header>
+        <div class="sub">Многопоточный стресс-тест для ваших серверов</div>
+
+        <!-- Панель управления -->
+        <div class="control-panel">
+            <div class="grid">
+                <div class="input-group">
+                    <label>🎯 Цель (IP или домен)</label>
+                    <input type="text" id="target" placeholder="example.com" value="127.0.0.1">
+                </div>
+                <div class="input-group">
+                    <label>🔌 Порт</label>
+                    <input type="number" id="port" value="80" min="1" max="65535">
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="input-group">
+                    <label>🧵 Потоков</label>
+                    <input type="number" id="threads" value="50" min="1" max="500">
+                </div>
+                <div class="input-group">
+                    <label>⏱️ Длительность (сек)</label>
+                    <input type="number" id="duration" value="30" min="5" max="300">
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="input-group">
+                    <label>📦 Размер пакета (байт)</label>
+                    <input type="number" id="payload" value="1024" min="64" max="65507">
+                </div>
+                <div class="input-group">
+                    <label>🔐 SSL</label>
+                    <select id="ssl">
+                        <option value="false">HTTP</option>
+                        <option value="true">HTTPS</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>⚡ Метод атаки</label>
+                <select id="method">
+                    <option value="http">🔥 HTTP Flood</option>
+                    <option value="udp">🌊 UDP Flood</option>
+                    <option value="tcp">🔗 TCP Flood</option>
+                    <option value="slowloris">🐢 Slowloris</option>
+                    <option value="hybrid">☣️ ГИБРИД (все методы)</option>
+                </select>
+            </div>
+
+            <div class="buttons">
+                <button id="startBtn" class="start">🔥 ЗАПУСТИТЬ</button>
+                <button id="stopBtn" class="stop" disabled>⏹️ ОСТАНОВИТЬ</button>
+                <button id="presetBtn" class="preset">⚡ БЫСТРЫЙ СТАРТ</button>
+            </div>
+        </div>
+
+        <!-- Живая статистика -->
+        <div class="stats-panel">
+            <div class="stats">
+                <div>📤 Отправлено: <span id="sent">0</span></div>
+                <div>❌ Ошибок: <span id="failed">0</span></div>
+                <div>📊 Объём: <span id="bytes">0</span> байт</div>
+                <div>⏱️ Время: <span id="time">0</span>с</div>
+            </div>
+            <div class="progress-bar">
+                <div id="progressFill" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <!-- График нагрузки (симуляция) -->
+        <div class="chart-container">
+            <canvas id="chartCanvas" width="400" height="120"></canvas>
+        </div>
+
+        <!-- Лог -->
+        <div id="log"></div>
+
+        <!-- Быстрые команды -->
+        <div class="quick-commands">
+            <button onclick="presetLight()">🌱 Лёгкий</button>
+            <button onclick="presetMedium()">🌿 Средний</button>
+            <button onclick="presetHeavy()">🌳 Тяжёлый</button>
+            <button onclick="presetUltimate()">💀 Ультимативный</button>
+        </div>
+
+        <div class="note">⚠️ Только для тестирования собственных систем. Ответственность на пользователе.</div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
