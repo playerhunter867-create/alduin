@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+phone_data.db
+.env
+venv/
+*.zip
+.DS_Store
