@@ -1,0 +1,121 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#08030d"><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="style.css?v=8"><title>ALDUIN X</title></head><body>
+<div id="loader">
+  <div class="loader-orbit"><span></span><i></i></div>
+  <div class="loader-dragon">🐉</div>
+  <div class="loader-title">ALDUIN <b>X</b></div>
+  <div class="loader-sub">PRIVATE DIGITAL CORE</div>
+  <div class="loader-progress"><i id="bootBar"></i></div>
+  <div class="loader-meta"><span id="bootStatus">INITIALIZING CORE</span><span id="bootPercent">0%</span></div>
+  <div class="loader-grid"></div>
+</div><div id="particles"></div>
+<div id="app" style="display:block">
+<header><div class="logo">🐉 <span>ALDUIN</span><small>X • PRIVATE CORE</small></div><div class="head-status"><span id="clock"></span><em>● CORE ONLINE</em></div></header>
+<div class="shell"><aside><button class="nav active" data-page="home">⌂<span>Главная</span></button><button class="nav" data-page="diary">📖<span>Дневник</span></button><button class="nav" data-page="gallery">🖼<span>Галерея</span></button>\n<button class="nav" data-page="ai">🧠<span>ALDUIN AI</span></button><button class="nav" data-page="live2d">🎭<span>Live2D</span></button><button class="nav" data-page="lore">🌌<span>Лор</span></button><button class="nav" data-page="calendar">📅<span>Календарь</span></button><button class="nav" data-page="timeline">◈<span>Хронология</span></button><button class="nav" data-page="profile">👑<span>Профиль</span></button><button class="nav" data-page="settings">⚙<span>Настройки</span></button><div class="core-mini">ALDUIN<br><strong>CORE</strong><i></i></div></aside>
+<main>
+<section id="home" class="page active"><div class="hero glass"><div><label>PERSONAL DIGITAL WORLD</label><h1>Добро пожаловать<br><span>в ALDUIN CORE</span></h1><p>Личный архив воспоминаний, образов, событий и лора.</p><div class="buttons"><button class="primary" data-go="diary">✦ Новая запись</button><button data-go="gallery">＋ Изображение</button></div></div><div class="core-eye"><div class="eye"></div></div></div>
+<div class="metrics"><div class="metric glass"><small>DAYS TOGETHER</small><b id="days">0</b><span>с 02.08.2026</span></div><div class="metric glass"><small>MEMORIES</small><b id="notesN">0</b><span>записей</span></div><div class="metric glass"><small>VISUALS</small><b id="photosN">0</b><span>изображений</span></div><div class="metric glass"><small>CORE FPS</small><b id="fps">--</b><span>реальный браузерный FPS</span></div></div>
+<div class="grid2"><div class="glass panel"><div class="panelhead"><h2>Последнее воспоминание</h2><button data-go="diary">Все →</button></div><div id="lastNote" class="empty">Пока пусто.</div></div><div class="glass panel"><div class="panelhead"><h2>Последние визуалы</h2><button data-go="gallery">Галерея →</button></div><div id="miniGallery" class="mini"></div></div></div></section>
+<section id="diary" class="page"><div class="title"><label>MEMORY ARCHIVE</label><h1>📖 Дневник</h1></div><div class="grid2"><div class="glass panel"><input id="nt" placeholder="Заголовок"><div class="row"><select id="nm"><option>💜 Радость</option><option>🌙 Спокойствие</option><option>🔥 Энергия</option><option>🌧 Грусть</option><option>🖤 Тяжёлый день</option></select><input id="ntag" placeholder="Теги"></div><textarea id="ntext" placeholder="Запиши всё, что хочешь сохранить..."></textarea><button id="saveNote" class="primary">💾 Сохранить</button></div><div class="glass panel"><div class="panelhead"><h2>Архив</h2><input id="nq" class="search" placeholder="Поиск"></div><div id="notes"></div></div></div></section>
+<section id="gallery" class="page"><div class="title"><label>VISUAL ARCHIVE</label><h1>🖼 Галерея</h1></div><div class="glass toolbar"><label class="upload primary">＋ Добавить<input id="files" type="file" accept="image/*" multiple></label><input id="gq" class="search" placeholder="Поиск"><select id="sort"><option value="new">Новые</option><option value="old">Старые</option><option value="name">Имя</option></select></div><div id="galleryGrid" class="gallery"></div><div id="gEmpty" class="empty glass">Галерея пуста.</div></section>
+<section id="lore" class="page"><div class="title"><label>WORLD DATABASE</label><h1>🌌 Лор Alduin</h1></div><div class="loregrid"><article class="glass panel"><h2>🐉 Происхождение</h2><p>Alduin — твой оригинальный персонаж и личный мир, который развивается вместе с твоими воспоминаниями.</p></article><article class="glass panel"><h2>✨ Характер</h2><textarea id="loreChar" placeholder="Опиши характер..."></textarea></article><article class="glass panel"><h2>👁 Образ</h2><textarea id="loreLook" placeholder="Внешность, одежда, атмосфера..."></textarea></article><article class="glass panel"><h2>📜 Канон</h2><textarea id="loreCanon" placeholder="Важные факты и правила мира..."></textarea></article></div><button id="saveLore" class="primary">💾 Сохранить лор</button></section>
+<section id="calendar" class="page"><div class="title"><label>DAILY LOG</label><h1>📅 Календарь</h1></div><div class="glass panel"><div class="calendar-head"><button id="prevM">‹</button><h2 id="month"></h2><button id="nextM">›</button></div><div id="cal" class="cal"></div><div id="dayInfo" class="empty">Выбери день.</div></div></section>
+<section id="timeline" class="page"><div class="title"><label>CHRONICLE</label><h1>◈ Хронология</h1></div><div id="timelineList"></div></section>
+<section id="profile" class="page"><div class="title"><label>IDENTITY</label><h1>👑 Профиль</h1></div><div class="glass profile"><div><img id="avatar" src="assets/avatar.svg"><label class="upload">Изменить аватар<input id="avatarFile" type="file" accept="image/*"></label></div><div class="fields"><input id="pn" value="Alduin"><input id="pt" value="Тульпа"><input id="po" value="Original Character"><input id="ptags" placeholder="OC, Anime, Game, Dark Fantasy"><textarea id="pd" placeholder="Описание..."></textarea><button id="saveProfile" class="primary">💾 Сохранить</button></div></div></section>
+<section id="settings" class="page"><div class="title"><label>CONTROL CENTER</label><h1>⚙ Настройки</h1></div><div class="settings"><div class="glass panel"><h2>🎨 Визуал</h2><label class="switch"><input id="fx" type="checkbox" checked><i></i> Частицы</label><label class="switch"><input id="glow" type="checkbox" checked><i></i> Свечение</label><label class="switch"><input id="motion" type="checkbox" checked><i></i> Анимации</label></div><div class="glass panel"><h2>💾 Данные</h2><button id="export">📦 Экспорт</button><button id="import">📥 Импорт</button><button id="wipe" class="danger">🗑 Очистить всё</button></div><div class="glass panel"><h2>⚡ Производительность</h2><p>Нет искусственного лимита 60 FPS. Анимации используют requestAnimationFrame и синхронизируются с дисплеем.</p><div class="perf">LIVE FPS <b id="fps2">--</b></div></div></div></section>
+</main></div><nav class="mobile" aria-label="Основная навигация">
+      <button class="mobile-btn" data-page="home" type="button"><b>⌂</b><span>Главная</span></button>
+      <button class="mobile-btn" data-page="diary" type="button"><b>📖</b><span>Дневник</span></button>
+      <button class="mobile-btn" data-page="gallery" type="button"><b>🖼</b><span>Галерея</span></button>
+      <button class="mobile-btn" data-page="ai" type="button"><b>🧠</b><span>AI</span></button>
+      <button class="mobile-btn" data-page="live2d" type="button"><b>🎭</b><span>Live2D</span></button>
+      <button class="mobile-btn" data-page="lore" type="button"><b>🌌</b><span>Лор</span></button>
+      <button class="mobile-btn" data-page="profile" type="button"><b>👑</b><span>Профиль</span></button><button class="mobile-btn" data-page="settings" type="button"><b>⚙</b><span>Настройки</span></button>
+    </nav></div><div id="viewer" hidden><button id="close">×</button><button id="prev">‹</button><img id="viewImg"><button id="next">›</button></div><div id="toast"></div>
+<section id="live2d" class="page">
+  <div class="live2d-shell">
+    <div class="live2d-head">
+      <div><div class="eyebrow">LIVE2D CHARACTER ENGINE</div><h2>🎭 ALDUIN LIVE</h2><p>Загрузи свою Live2D Cubism модель и подключи её к выбранному AI.</p></div>
+      <div class="ai-status" id="live2dStatus"><i></i><span>NO MODEL</span></div>
+    </div>
+    <div class="live2d-layout">
+      <div class="glass live2d-stage-wrap">
+        <div id="live2dStage" class="live2d-stage">
+          <canvas id="live2dCanvas"></canvas>
+          <div id="live2dEmpty" class="live2d-empty"><div>🐉</div><b>ALDUIN LIVE</b><small>Загрузи .zip модели или папку с .model3.json</small></div>
+          <div class="live2d-ai-dock" id="live2dAIDock">
+            <div class="live2d-ai-dock-head"><span>🧠 <b>ALDUIN AI</b></span><span id="live2dAIState">OFFLINE</span><button id="live2dAICollapse" type="button" aria-label="Свернуть AI">−</button></div>
+            <div class="live2d-mini-chat" id="live2dChat"><div class="ai-msg ai"><b>ALDUIN AI</b><p>Подключи AI во вкладке «AI», и мы сможем общаться прямо рядом с моделью.</p></div></div>
+            <form class="live2d-mini-input" id="live2dForm"><textarea id="live2dInput" rows="1" placeholder="Напиши ALDUIN…" autocomplete="off"></textarea><button type="submit" aria-label="Отправить">➤</button></form>
+          </div>
+          <button class="live2d-ai-fab" id="live2dAIOpen" type="button">🧠 AI</button>
+        </div>
+        <div class="live2d-stage-tools">
+          <button id="live2dReset" type="button">↺ Сброс</button>
+          <button id="live2dCenter" type="button">◎ Центр</button>
+          <label class="range">Размер <input id="live2dScale" type="range" min="0.2" max="2.5" step="0.01" value="1"></label>
+        </div>
+      </div>
+      <div class="live2d-controls">
+        <div class="glass panel">
+          <h3>📦 Модель</h3>
+          <div class="live2d-upload-grid">
+            <button id="live2dBundled" class="upload primary" type="button">🐉 Встроенная модель</button><label class="upload primary">＋ ZIP модели<input id="live2dZip" type="file" accept=".zip,application/zip"></label>
+            <label class="upload">＋ Папка модели<input id="live2dFolder" type="file" webkitdirectory directory multiple></label>
+          </div>
+          <p class="live2d-help">Встроенная модель уже готова. Также поддерживаются Cubism 3/4 (.model3.json). Для папки выбери всю папку модели, чтобы .moc3, текстуры, motions и expressions были доступны.</p>
+          <div id="live2dModelInfo" class="live2d-info">Модель ещё не загружена.</div>
+        </div>
+        <div class="glass panel">
+          <h3>🤖 AI → Live2D</h3>
+          <label class="switch"><input id="live2dAI" type="checkbox" checked><i></i> Управление движениями от AI</label>
+          <label class="switch"><input id="live2dLook" type="checkbox" checked><i></i> Следить глазами за курсором</label>
+          <label class="switch"><input id="live2dTalk" type="checkbox" checked><i></i> Анимация речи</label>
+          <div class="live2d-emotions">
+            <button type="button" data-live-emotion="neutral">😐</button><button type="button" data-live-emotion="happy">😊</button><button type="button" data-live-emotion="sad">😢</button><button type="button" data-live-emotion="angry">😠</button><button type="button" data-live-emotion="surprised">😮</button>
+          </div>
+          <div class="live2d-actions"><button id="live2dMotion" type="button">▶ Тест движения</button><button id="live2dBlink" type="button">👁 Моргнуть</button></div>
+        </div>
+        <div class="glass panel voice-panel">
+          <h3>🎙️ Голос ALDUIN</h3>
+          <label class="switch"><input id="voiceEnabled" type="checkbox"><i></i> Озвучивать ответы AI</label>
+          <div class="voice-grid">
+            <label>Язык<select id="voiceLang"><option value="ru-RU">🇷🇺 Русский</option><option value="en-US">🇺🇸 English</option></select></label>
+            <label>Стиль<select id="voiceStyle"><option value="soft">🌸 Anime Soft</option><option value="cute">💜 Anime Cute</option><option value="energetic">🔥 Anime Energetic</option><option value="calm">🖤 Anime Calm</option></select></label>
+            <label class="full">Голос устройства<select id="voiceSelect"><option value="">Автоматический голос</option></select></label>
+            <label>Скорость<input id="voiceRate" type="range" min="0.65" max="1.35" step="0.01" value="0.95"></label>
+            <label>Высота<input id="voicePitch" type="range" min="0.75" max="1.5" step="0.01" value="1.18"></label>
+          </div>
+          <div class="voice-actions"><button id="voiceTest" type="button">🔊 Тест</button><button id="voiceStop" type="button">⏹ Стоп</button></div>
+          <p class="live2d-help">Используются бесплатные голоса, доступные в браузере/на телефоне. Для русского и английского можно выбрать разные голоса. Стиль меняет высоту и скорость речи.</p>
+        </div>
+        <div class="glass panel">
+          <h3>🧩 Как это работает</h3>
+          <p class="live2d-help">AI остаётся тем же: Gemini, Groq, OpenAI, DeepSeek, Grok, OpenRouter и другие API. После ответа AI может вернуть скрытую команду эмоции/движения, а Live2D-движок применит её к модели.</p>
+          <div class="live2d-command" id="live2dCommand">Ожидание команды AI…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<section id="ai" class="page">
+  <div class="ai-shell">
+    <div class="ai-head">
+      <div><div class="eyebrow">API INTELLIGENCE HUB</div><h2>🧠 ALDUIN AI</h2><p>Подключай Gemini, Groq, OpenAI, DeepSeek, Grok, OpenRouter и другие API.</p></div>
+      <div class="ai-status" id="aiStatus"><i></i><span>OFFLINE</span></div>
+    </div>
+    <div class="ai-settings-grid">
+      <label>Провайдер<select id="aiProvider"></select></label>
+      <label>Модель<select id="aiModel"></select></label>
+      <label class="full">API Key<input id="aiKey" type="password" autocomplete="off" placeholder="Вставь API key…"></label>
+      <label class="full">Base URL<input id="aiBase" autocomplete="off" placeholder="Автоматически для выбранного провайдера"></label>
+      <div class="ai-actions full"><button id="aiConnect" class="primary" type="button">🔌 Подключить API</button><button id="aiModels" type="button">🔄 Получить модели</button><button id="aiClear" type="button">🗑 Очистить чат</button></div>
+    </div>
+    <div class="ai-help" id="aiHelp"></div>
+    <div class="ai-chat" id="aiChat"><div class="ai-msg ai"><b>ALDUIN AI</b><p>Привет! Выбери провайдера, вставь API key и нажми «Подключить API».</p></div></div>
+    <form class="ai-input" id="aiForm"><textarea id="aiInput" rows="1" placeholder="Напиши сообщение…" autocomplete="off"></textarea><button type="submit" aria-label="Отправить">➤</button></form>
+    <div class="ai-note">API-ключ хранится только в браузере устройства. Для публичного сайта безопаснее использовать backend/proxy.</div>
+  </div>
+</section>
+</div>
+<script src="runtime-loader.js?v=1"></script>
+<script src="app.js?v=22" defer></script></body></html>

@@ -1,0 +1,419 @@
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+const KEY={notes:'alduin_notes_v3',profile:'alduin_profile_v3',lore:'alduin_lore_v3',avatar:'alduin_avatar_v3',settings:'alduin_settings_v3'};
+let notes=[],photos=[],db=null,viewIndex=0,calDate=new Date();
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const load=(k,d)=>{try{const x=localStorage.getItem(k);return x?JSON.parse(x):d}catch{return d}};
+const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){console.warn(e)}};
+function toast(t){const e=$('toast');if(!e)return;e.textContent=t;e.classList.add('show');clearTimeout(window.__toast);window.__toast=setTimeout(()=>e.classList.remove('show'),1800)}
+function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===id));window.scrollTo({top:0,behavior:'smooth'})}
+function nav(){document.querySelectorAll('[data-page]').forEach(b=>{b.onclick=()=>showPage(b.dataset.page)});document.querySelectorAll('[data-go]').forEach(b=>{b.onclick=()=>showPage(b.dataset.go)});const m=document.querySelector('.mobile');if(m){const wanted=['home','diary','gallery','ai','live2d','profile','settings'];const icons={home:'⌂',diary:'📖',gallery:'🖼',ai:'🧠',live2d:'🎭',profile:'👑',settings:'⚙'};const labels={home:'Главная',diary:'Дневник',gallery:'Галерея',ai:'AI',live2d:'Live2D',profile:'Профиль',settings:'Настройки'};m.querySelectorAll('.mobile-btn').forEach(b=>{const id=b.dataset.page;if(wanted.includes(id)){const icon=b.querySelector('b');const label=b.querySelector('span');if(icon)icon.textContent=icons[id];if(label)label.textContent=labels[id]||id;b.onclick=()=>showPage(id)}})}}
+function openDB(){return new Promise((resolve,reject)=>{if(!window.indexedDB)return reject(new Error('no indexedDB'));let r=indexedDB.open('ALDUIN_X_V3',1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('photos'))r.result.createObjectStore('photos',{keyPath:'id',autoIncrement:true})};r.onsuccess=()=>{db=r.result;resolve()};r.onerror=()=>reject(r.error);r.onblocked=()=>reject(new Error('blocked'))})}
+function dbAll(){return new Promise((res,rej)=>{if(!db)return rej();let r=db.transaction('photos').objectStore('photos').getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function dbAdd(p){return new Promise((res,rej)=>{if(!db)return rej();let r=db.transaction('photos','readwrite').objectStore('photos').add(p);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function dbDel(id){return new Promise((res,rej)=>{if(!db)return rej();let r=db.transaction('photos','readwrite').objectStore('photos').delete(id);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
+function renderNotes(){const q=($('nq')?.value||'').toLowerCase();const a=notes.filter(n=>(n.title+' '+n.text+' '+n.tags).toLowerCase().includes(q)).sort((a,b)=>b.date-a.date);$('notes').innerHTML=a.length?a.map(n=>`<article class="glass panel" style="margin:9px 0"><div class="panelhead"><div><h2>${esc(n.mood)} ${esc(n.title||'Без названия')}</h2><small>${new Date(n.date).toLocaleString('ru-RU')}</small></div><button data-del-note="${n.id}">×</button></div><p>${esc(n.text).replace(/\n/g,'<br>')}</p><small>${esc(n.tags)}</small></article>`).join(''):'<div class="empty">Записей пока нет.</div>';document.querySelectorAll('[data-del-note]').forEach(b=>b.onclick=()=>{notes=notes.filter(n=>n.id!==b.dataset.delNote);save(KEY.notes,notes);renderAll()})}
+function renderGallery(){const q=($('gq')?.value||'').toLowerCase();let a=photos.filter(p=>(p.name||'').toLowerCase().includes(q));const sort=$('sort')?.value||'new';a.sort((x,y)=>sort==='old'?x.date-y.date:sort==='name'?(x.name||'').localeCompare(y.name||''):y.date-x.date);$('galleryGrid').innerHTML=a.map(p=>`<div class="gitem"><img src="${p.data}" data-open="${p.id}"><button data-del-photo="${p.id}">×</button></div>`).join('');$('gEmpty').hidden=photos.length>0;document.querySelectorAll('[data-open]').forEach(i=>i.onclick=()=>openViewer(i.dataset.open));document.querySelectorAll('[data-del-photo]').forEach(b=>b.onclick=async()=>{try{if(db)await dbDel(Number(b.dataset.delPhoto))}catch{}photos=photos.filter(p=>String(p.id)!==String(b.dataset.delPhoto));renderAll()})}
+function openViewer(id){viewIndex=photos.findIndex(p=>String(p.id)===String(id));if(viewIndex<0)return;$('viewImg').src=photos[viewIndex].data;$('viewer').hidden=false}
+function step(d){if(!photos.length)return;viewIndex=(viewIndex+d+photos.length)%photos.length;$('viewImg').src=photos[viewIndex].data}
+function renderHome(){const days=Math.max(0,Math.floor((Date.now()-Date.parse('2026-08-02T00:00:00Z'))/86400000));$('days').textContent=days;$('notesN').textContent=notes.length;$('photosN').textContent=photos.length;const n=[...notes].sort((a,b)=>b.date-a.date)[0];$('lastNote').innerHTML=n?`<h2>${esc(n.title||'Без названия')}</h2><p>${esc(n.text).slice(0,300)}</p>`:'Пока пусто.';$('miniGallery').innerHTML=photos.slice().sort((a,b)=>b.date-a.date).slice(0,4).map(p=>`<img src="${p.data}" data-open="${p.id}">`).join('');document.querySelectorAll('#miniGallery [data-open]').forEach(i=>i.onclick=()=>openViewer(i.dataset.open))}
+function renderTimeline(){$('timelineList').innerHTML=notes.slice().sort((a,b)=>b.date-a.date).map(n=>`<article class="timeline-item glass"><small>${new Date(n.date).toLocaleString('ru-RU')}</small><h2>${esc(n.mood)} ${esc(n.title||'Без названия')}</h2><p>${esc(n.text).slice(0,450)}</p></article>`).join('')||'<div class="empty glass">Хронология пуста.</div>'}
+function renderCalendar(){const y=calDate.getFullYear(),m=calDate.getMonth();$('month').textContent=new Date(y,m,1).toLocaleDateString('ru-RU',{month:'long',year:'numeric'});let first=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate(),html='';for(let i=0;i<first;i++)html+='<div></div>';for(let d=1;d<=days;d++){const has=notes.some(n=>{const x=new Date(n.date);return x.getFullYear()===y&&x.getMonth()===m&&x.getDate()===d});html+=`<button class="day ${has?'has':''}" data-day="${d}"><b>${d}</b>${has?'<br>✦':''}</button>`}$('cal').innerHTML=html;document.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{const d=+b.dataset.day,a=notes.filter(n=>{const x=new Date(n.date);return x.getFullYear()===y&&x.getMonth()===m&&x.getDate()===d});$('dayInfo').innerHTML=a.length?a.map(n=>`<h3>${esc(n.title||'Без названия')}</h3><p>${esc(n.text)}</p>`).join(''):'<p>В этот день записей нет.</p>'})}
+function loadProfile(){const p=load(KEY.profile,{});$('pn').value=p.name||'Alduin';$('pt').value=p.type||'Тульпа';$('po').value=p.origin||'Original Character';$('ptags').value=p.tags||'';$('pd').value=p.desc||'';const a=localStorage.getItem(KEY.avatar);if(a)$('avatar').src=a;const l=load(KEY.lore,{});$('loreChar').value=l.char||'';$('loreLook').value=l.look||'';$('loreCanon').value=l.canon||''}
+function renderAll(){renderHome();renderNotes();renderGallery();renderTimeline();renderCalendar()}
+function startFPS(){let last=performance.now(),frames=0;function loop(t){frames++;if(t-last>=500){const v=Math.round(frames*1000/(t-last));$('fps').textContent=v;if($('fps2'))$('fps2').textContent=v;frames=0;last=t}requestAnimationFrame(loop)}requestAnimationFrame(loop)}
+function startParticles(){const host=$('particles');if(!host)return;const c=document.createElement('canvas'),ctx=c.getContext('2d',{alpha:true});host.appendChild(c);let ps=[];function resize(){c.width=innerWidth;c.height=innerHeight;ps=Array.from({length:Math.min(70,Math.max(20,Math.floor(innerWidth/18)))},()=>({x:Math.random()*c.width,y:Math.random()*c.height,r:.4+Math.random()*1.4,v:.15+Math.random()*.25,a:.12+Math.random()*.35}))}resize();addEventListener('resize',resize,{passive:true});function draw(){ctx.clearRect(0,0,c.width,c.height);for(const p of ps){p.y-=p.v;if(p.y<0)p.y=c.height;ctx.globalAlpha=p.a;ctx.fillStyle='#c98bff';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill()}requestAnimationFrame(draw)}requestAnimationFrame(draw)}
+function settings(){const s=load(KEY.settings,{fx:true,glow:true,motion:true});$('fx').checked=s.fx;$('glow').checked=s.glow;$('motion').checked=s.motion;function apply(){const v={fx:$('fx').checked,glow:$('glow').checked,motion:$('motion').checked};document.body.classList.toggle('no-particles',!v.fx);document.body.classList.toggle('no-glow',!v.glow);document.body.classList.toggle('no-motion',!v.motion);save(KEY.settings,v)}['fx','glow','motion'].forEach(id=>$(id).onchange=apply);apply()}
+async function addImages(files){for(const f of files){const data=await new Promise(ok=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>ok(null);r.readAsDataURL(f)});if(!data)continue;const p={name:f.name,data,date:Date.now()};try{if(db){const id=await dbAdd(p);p.id=id}else p.id='local-'+Date.now()+'-'+Math.random()}catch{p.id='local-'+Date.now()+'-'+Math.random()}photos.push(p)}renderAll();toast('Изображения добавлены')}
+function wire(){nav();$('saveNote').onclick=()=>{const text=$('ntext').value.trim();if(!text)return toast('Сначала напиши текст');notes.push({id:(crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random())),date:Date.now(),title:$('nt').value,mood:$('nm').value,tags:$('ntag').value,text});save(KEY.notes,notes);$('nt').value='';$('ntext').value='';$('ntag').value='';renderAll();toast('Воспоминание сохранено')};$('nq').oninput=renderNotes;$('gq').oninput=renderGallery;$('sort').onchange=renderGallery;$('files').onchange=e=>{if(e.target.files?.length)addImages([...e.target.files]);e.target.value=''};$('saveProfile').onclick=()=>{save(KEY.profile,{name:$('pn').value,type:$('pt').value,origin:$('po').value,tags:$('ptags').value,desc:$('pd').value});toast('Профиль сохранён')};$('saveLore').onclick=()=>{save(KEY.lore,{char:$('loreChar').value,look:$('loreLook').value,canon:$('loreCanon').value});toast('Лор сохранён')};$('avatarFile').onchange=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{localStorage.setItem(KEY.avatar,r.result);$('avatar').src=r.result};r.readAsDataURL(f)};$('prevM').onclick=()=>{calDate.setMonth(calDate.getMonth()-1);renderCalendar()};$('nextM').onclick=()=>{calDate.setMonth(calDate.getMonth()+1);renderCalendar()};$('close').onclick=()=>$('viewer').hidden=true;$('prev').onclick=()=>step(-1);$('next').onclick=()=>step(1);document.addEventListener('keydown',e=>{if($('viewer').hidden)return;if(e.key==='Escape')$('viewer').hidden=true;if(e.key==='ArrowLeft')step(-1);if(e.key==='ArrowRight')step(1)});$('export').onclick=()=>{const data={version:3,notes,profile:load(KEY.profile,{}),lore:load(KEY.lore,{}),avatar:localStorage.getItem(KEY.avatar)||'',photos};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));a.download='ALDUIN_X_BACKUP.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};$('import').onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=async()=>{try{const d=JSON.parse(await i.files[0].text());notes=d.notes||[];save(KEY.notes,notes);if(d.profile)save(KEY.profile,d.profile);if(d.lore)save(KEY.lore,d.lore);if(d.avatar)localStorage.setItem(KEY.avatar,d.avatar);if(db&&d.photos)for(const p of d.photos)await dbAdd({name:p.name,data:p.data,date:p.date});location.reload()}catch{toast('Ошибка импорта')}};i.click()};$('wipe').onclick=async()=>{if(!confirm('Удалить все данные ALDUIN?'))return;Object.values(KEY).forEach(k=>localStorage.removeItem(k));try{if(db){const r=db.transaction('photos','readwrite').objectStore('photos').clear();await new Promise(ok=>{r.onsuccess=ok})}}catch{}location.reload()};settings();startParticles();startFPS();setInterval(()=>{$('clock').textContent=new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})},1000);$('clock').textContent=new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}
+function bootSequence(){
+  const bar=$("bootBar"), pct=$("bootPercent"), status=$("bootStatus");
+  const steps=[
+    ["AWAKENING ALDUIN CORE",18],
+    ["LOADING MEMORY ARCHIVE",36],
+    ["SYNCING VISUAL ENGINE",54],
+    ["INITIALIZING PARTICLE FIELD",72],
+    ["CALIBRATING DISPLAY PIPELINE",88],
+    ["CORE ONLINE",100]
+  ];
+  let i=0;
+  function step(){
+    if(i>=steps.length)return;
+    const [label,n]=steps[i++];
+    if(status)status.textContent=label;
+    if(bar)bar.style.width=n+"%";
+    if(pct)pct.textContent=n+"%";
+    setTimeout(step,i<steps.length?90:120);
+  }
+  step();
+}
+// removed malformed async line
+/* ===== ALDUIN AI / API HUB ===== */
+const AI_PROVIDERS={
+  gemini:{name:'Google Gemini',base:'https://generativelanguage.googleapis.com/v1beta/openai/',models:['gemini-2.5-flash','gemini-2.5-flash-lite','gemini-2.5-pro'],help:'Google AI Studio: https://aistudio.google.com/apikey'},
+  groq:{name:'Groq',base:'https://api.groq.com/openai/v1',models:['llama-3.3-70b-versatile','openai/gpt-oss-120b','qwen/qwen3-32b'],help:'Groq Console: https://console.groq.com/keys'},
+  openai:{name:'OpenAI',base:'https://api.openai.com/v1',models:['gpt-4o-mini','gpt-4.1-mini','gpt-4.1'],help:'OpenAI Platform: https://platform.openai.com/api-keys'},
+  deepseek:{name:'DeepSeek',base:'https://api.deepseek.com',models:['deepseek-v4-flash','deepseek-v4-pro'],help:'DeepSeek Platform: https://platform.deepseek.com/'},
+  xai:{name:'Grok / xAI',base:'https://api.x.ai/v1',models:['grok-4.5','grok-4'],help:'xAI Console: https://console.x.ai/'},
+  openrouter:{name:'OpenRouter',base:'https://openrouter.ai/api/v1',models:['openai/gpt-4o-mini','google/gemini-2.5-flash','deepseek/deepseek-chat-v3-0324','meta-llama/llama-3.3-70b-instruct'],help:'OpenRouter: https://openrouter.ai/keys'},
+  mistral:{name:'Mistral',base:'https://api.mistral.ai/v1',models:['mistral-small-latest','mistral-large-latest','codestral-latest'],help:'Mistral Console: https://console.mistral.ai/'},
+  together:{name:'Together AI',base:'https://api.together.xyz/v1',models:['meta-llama/Llama-3.3-70B-Instruct-Turbo','Qwen/Qwen2.5-72B-Instruct-Turbo'],help:'Together AI: https://api.together.ai/settings/api-keys'},
+  custom:{name:'Custom OpenAI-compatible',base:'',models:[],help:'Укажи Base URL, API key и модель своего сервиса.'}
+};
+let aiProvider='gemini',aiConnected=false,aiHistory=[];
+const AIKEY='alduin_ai_api_v2';
+const aiState=()=>load(AIKEY,{provider:'gemini',model:'gemini-2.5-flash',key:'',base:''});
+function aiEl(id){return document.getElementById(id)}
+function aiAdd(role,text){
+  const chats=[aiEl('aiChat'),aiEl('live2dChat')].filter(Boolean);
+  if(!chats.length)return null;
+  let first=null;
+  chats.forEach(chat=>{
+    const box=document.createElement('div');box.className='ai-msg '+role;box.innerHTML='<b>'+(role==='user'?'YOU':'ALDUIN AI')+'</b><p></p>';
+    box.querySelector('p').textContent=text;chat.appendChild(box);chat.scrollTop=chat.scrollHeight;
+    if(!first)first=box.querySelector('p');
+  });
+  return first;
+}
+function live2dAICommand(text){
+  const raw=String(text||'');
+  const m=raw.match(/\[\[LIVE2D\s+emotion=([a-z_]+)\s+motion=([a-z_]+)\s*\]\]/i);
+  if(m){
+    const clean=raw.replace(m[0],'').trim();
+    if(window.ALDUIN_LIVE2D?.applyAICommand)window.ALDUIN_LIVE2D.applyAICommand({emotion:m[1].toLowerCase(),motion:m[2].toLowerCase()});
+    return clean;
+  }
+  if(window.ALDUIN_LIVE2D?.autoReact)window.ALDUIN_LIVE2D.autoReact(raw);
+  return raw;
+}
+function aiStatus(text,on=false){const e=aiEl('aiStatus');if(!e)return;e.classList.toggle('online',on);e.querySelector('span').textContent=text}
+function aiConfig(){return load(AIKEY,{provider:'gemini',model:'gemini-2.5-flash',key:'',base:''})}
+function populateAI(){const ps=aiEl('aiProvider'),ms=aiEl('aiModel');if(!ps||!ms)return;ps.innerHTML=Object.entries(AI_PROVIDERS).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('');const st=aiConfig();aiProvider=st.provider||'gemini';ps.value=aiProvider;aiEl('aiKey').value=st.key||'';aiEl('aiBase').value=st.base||'';setAIModels(st.model)}
+function setAIModels(selected){const ms=aiEl('aiModel'),p=AI_PROVIDERS[aiProvider];if(!ms||!p)return;const list=[...(p.models||[])];if(selected&&!list.includes(selected))list.unshift(selected);ms.innerHTML=list.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');if(selected)ms.value=selected}
+function selectedBase(){const custom=(aiEl('aiBase')?.value||'').trim();return custom||AI_PROVIDERS[aiProvider].base}
+function saveAI(){save(AIKEY,{provider:aiProvider,model:aiEl('aiModel')?.value||'',key:aiEl('aiKey')?.value||'',base:aiEl('aiBase')?.value||''})}
+async function fetchModels(){const key=aiEl('aiKey')?.value.trim();const base=selectedBase().replace(/\/$/,'');if(!key)return aiAdd('ai','Сначала вставь API key.');if(!base)return aiAdd('ai','Для Custom API укажи Base URL.');try{aiStatus('ПОЛУЧЕНИЕ МОДЕЛЕЙ…');let url=base+'/models';const r=await fetch(url,{headers:{Authorization:'Bearer '+key}});if(!r.ok)throw new Error('HTTP '+r.status+' — '+(await r.text()).slice(0,300));const d=await r.json();const ids=(d.data||[]).map(x=>x.id).filter(Boolean);if(!ids.length)throw new Error('Провайдер не вернул список моделей');const ms=aiEl('aiModel');ms.innerHTML=ids.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');aiStatus('МОДЕЛИ ПОЛУЧЕНЫ',true);toast('Модели обновлены');saveAI()}catch(e){aiStatus('ОШИБКА');aiAdd('ai','Не удалось получить модели: '+e.message)}}
+async function connectAI(){const key=aiEl('aiKey')?.value.trim();if(!key)return aiAdd('ai','Вставь API key.');if(!selectedBase())return aiAdd('ai','Укажи Base URL.');saveAI();aiStatus('ПРОВЕРКА…');try{const base=selectedBase().replace(/\/$/,'');const r=await fetch(base+'/models',{headers:{Authorization:'Bearer '+key}});if(!r.ok){const body=await r.text();throw new Error('HTTP '+r.status+(body?' — '+body.slice(0,220):''))}aiConnected=true;aiStatus('API ONLINE',true);aiAdd('ai','Подключено: '+AI_PROVIDERS[aiProvider].name+' / '+aiEl('aiModel').value);syncLive2DAIState()}catch(e){aiConnected=false;aiStatus('ОШИБКА');aiAdd('ai','Не удалось подключиться к API: '+e.message);syncLive2DAIState()}}
+async function sendAPI(text){if(!aiConnected){aiAdd('ai','Сначала нажми «Подключить API».');return}const key=aiEl('aiKey').value.trim(),base=selectedBase().replace(/\/$/,'');const model=aiEl('aiModel').value;const p=aiAdd('ai','');aiHistory.push({role:'user',content:text});try{let result; if(aiProvider==='custom'||aiProvider==='gemini'||aiProvider==='groq'||aiProvider==='openai'||aiProvider==='deepseek'||aiProvider==='xai'||aiProvider==='openrouter'||aiProvider==='mistral'||aiProvider==='together'){const r=await fetch(base+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages:[{role:'system',content:'Ты ALDUIN AI внутри личного сайта пользователя. Отвечай дружелюбно, полезно и понятно. Уважай приватность пользователя. Если подключён Live2D, в конце ответа при необходимости добавляй одну скрытую команду формата [[LIVE2D emotion=happy motion=auto]], где emotion может быть neutral, happy, sad, angry, surprised, а motion может быть auto, tap, wave, nod, shake. Не объясняй эту команду пользователю. Если движение не нужно, команду можно не добавлять.'},...aiHistory],temperature:0.7,max_tokens:1024})});const raw=await r.text();if(!r.ok)throw new Error('HTTP '+r.status+' — '+raw.slice(0,500));result=JSON.parse(raw);const full=result.choices?.[0]?.message?.content||result.choices?.[0]?.text||'';if(!full)throw new Error('Пустой ответ API');const clean=live2dAICommand(full);p.textContent=clean;aiHistory.push({role:'assistant',content:clean});speakALDUIN(clean)}}catch(e){console.error(e);p.textContent='Ошибка ответа: '+e.message;aiHistory.pop()}}
+function setupALDUINAI(){
+  populateAI();
+  const ps=aiEl('aiProvider');
+  ps?.addEventListener('change',()=>{aiProvider=ps.value;const st=aiConfig();setAIModels(st.provider===aiProvider?st.model:null);aiEl('aiBase').value=AI_PROVIDERS[aiProvider].base;if(aiEl('aiHelp'))aiEl('aiHelp').textContent=AI_PROVIDERS[aiProvider].help;saveAI();syncLive2DAIState()});
+  aiEl('aiConnect')?.addEventListener('click',async()=>{await connectAI();syncLive2DAIState()});
+  aiEl('aiModels')?.addEventListener('click',fetchModels);
+  aiEl('aiClear')?.addEventListener('click',()=>{aiHistory=[];const html='<div class="ai-msg ai"><b>ALDUIN AI</b><p>Чат очищен.</p></div>';if(aiEl('aiChat'))aiEl('aiChat').innerHTML=html;if(aiEl('live2dChat'))aiEl('live2dChat').innerHTML=html});
+  aiEl('aiForm')?.addEventListener('submit',async e=>{e.preventDefault();const input=aiEl('aiInput'),text=input.value.trim();if(!text)return;aiAdd('user',text);input.value='';await sendAPI(text)});
+  aiEl('live2dForm')?.addEventListener('submit',async e=>{e.preventDefault();const input=aiEl('live2dInput'),text=input.value.trim();if(!text)return;aiAdd('user',text);input.value='';await sendAPI(text)});
+  aiEl('live2dAICollapse')?.addEventListener('click',()=>aiEl('live2dAIDock')?.classList.toggle('collapsed'));
+  aiEl('live2dAIOpen')?.addEventListener('click',()=>{aiEl('live2dAIDock')?.classList.remove('collapsed');aiEl('live2dInput')?.focus()});
+  if(aiEl('aiHelp'))aiEl('aiHelp').textContent=AI_PROVIDERS[aiProvider].help;
+  syncLive2DAIState();
+}
+function syncLive2DAIState(){const e=aiEl('live2dAIState');if(!e)return;const st=aiConfig();e.textContent=aiConnected?'● '+(AI_PROVIDERS[aiProvider]?.name||aiProvider)+' / '+(st.model||aiEl('aiModel')?.value||'AI'):'OFFLINE — подключи AI';e.classList.toggle('online',aiConnected)}
+document.addEventListener('DOMContentLoaded',setupALDUINAI,{once:true});
+
+/* ===== ALDUIN VOICE ENGINE ===== */
+const VOICE_KEY='alduin_voice_v1';
+let alduinVoices=[];
+let alduinUtterance=null;
+let alduinSpeechTimer=null;
+const VOICE_STYLES={
+  soft:{rate:.92,pitch:1.16},
+  cute:{rate:.98,pitch:1.30},
+  energetic:{rate:1.08,pitch:1.24},
+  calm:{rate:.84,pitch:1.08}
+};
+function voiceConfig(){return load(VOICE_KEY,{enabled:false,auto:true,lang:'ru-RU',style:'soft',voiceURI:'',rate:.95,pitch:1.18})}
+function voiceSave(){save(VOICE_KEY,{enabled:!!aiEl('voiceEnabled')?.checked,auto:!!aiEl('voiceEnabled')?.checked,lang:aiEl('voiceLang')?.value||'ru-RU',style:aiEl('voiceStyle')?.value||'soft',voiceURI:aiEl('voiceSelect')?.value||'',rate:parseFloat(aiEl('voiceRate')?.value||.95),pitch:parseFloat(aiEl('voicePitch')?.value||1.18)})}
+function voiceAvailable(){return 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window}
+function voiceLabel(v){
+  const n=(v.name||'').toLowerCase();
+  const female=/female|woman|girl|zira|samantha|victoria|susan|aria|jenny|sara|ava|emma|olivia|alena|milena|irina|katya|svetlana|google русский|русский female|russian female|русский язык/i.test(n);
+  return (female?'♀ ':'')+v.name+(v.localService?'':' • online');
+}
+function refreshALDUINVoices(){
+  if(!voiceAvailable())return;
+  alduinVoices=window.speechSynthesis.getVoices()||[];
+  const lang=aiEl('voiceLang')?.value||'ru-RU', select=aiEl('voiceSelect');
+  if(!select)return;
+  const prefix=lang.split('-')[0].toLowerCase();
+  const list=alduinVoices.filter(v=>String(v.lang||'').toLowerCase().startsWith(prefix));
+  const all=alduinVoices.filter(v=>!list.includes(v));
+  const visible=list.length?list:all;
+  const old=voiceConfig().voiceURI||'';
+  select.innerHTML='<option value="">Автоматический голос</option>'+visible.map(v=>`<option value="${esc(v.voiceURI)}">${esc(voiceLabel(v))} · ${esc(v.lang)}</option>`).join('');
+  if(old&&visible.some(v=>v.voiceURI===old))select.value=old;
+}
+function applyVoiceStyle(){
+  const style=VOICE_STYLES[aiEl('voiceStyle')?.value||'soft']||VOICE_STYLES.soft;
+  const r=aiEl('voiceRate'),p=aiEl('voicePitch');
+  if(r&&!r.dataset.userChanged)r.value=style.rate;
+  if(p&&!p.dataset.userChanged)p.value=style.pitch;
+}
+function voiceSyncTalk(active){
+  clearInterval(alduinSpeechTimer);alduinSpeechTimer=null;
+  if(!active){live2dParam('ParamMouthOpenY',0);return}
+  let t=0;
+  alduinSpeechTimer=setInterval(()=>{if(!live2dModel){return} t++;const open=t%3===0?.18:t%2?.68:.35;live2dParam('ParamMouthOpenY',open)},85);
+}
+function pickALDUINVoice(){
+  const lang=aiEl('voiceLang')?.value||'ru-RU', chosen=aiEl('voiceSelect')?.value||'';
+  if(chosen){const exact=alduinVoices.find(v=>v.voiceURI===chosen);if(exact)return exact}
+  const prefix=lang.split('-')[0].toLowerCase();
+  const list=alduinVoices.filter(v=>String(v.lang||'').toLowerCase().startsWith(prefix));
+  const feminine=list.find(v=>/female|woman|girl|zira|samantha|victoria|aria|jenny|alena|milena|irina|katya|russian female|русский female/i.test(v.name||''));
+  return feminine||list[0]||alduinVoices[0]||null;
+}
+function speakALDUIN(text){
+  if(!voiceAvailable()||!aiEl('voiceEnabled')?.checked)return;
+  const clean=String(text||'').replace(/\[\[LIVE2D[\s\S]*?\]\]/gi,'').replace(/\s+/g,' ').trim();
+  if(!clean)return;
+  try{
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(clean),cfg=voiceConfig(),style=VOICE_STYLES[aiEl('voiceStyle')?.value||cfg.style||'soft']||VOICE_STYLES.soft;
+    u.lang=aiEl('voiceLang')?.value||cfg.lang||'ru-RU';
+    u.voice=pickALDUINVoice();
+    u.rate=parseFloat(aiEl('voiceRate')?.value||style.rate);
+    u.pitch=parseFloat(aiEl('voicePitch')?.value||style.pitch);
+    u.volume=1;
+    u.onstart=()=>voiceSyncTalk(true);
+    u.onend=()=>voiceSyncTalk(false);
+    u.onerror=()=>voiceSyncTalk(false);
+    alduinUtterance=u;
+    window.speechSynthesis.speak(u);
+  }catch(e){console.warn('ALDUIN voice',e);voiceSyncTalk(false)}
+}
+function setupALDUINVoice(){
+  const enabled=aiEl('voiceEnabled');
+  if(!enabled)return;
+  const cfg=voiceConfig();
+  enabled.checked=!!cfg.enabled;
+  if(aiEl('voiceLang'))aiEl('voiceLang').value=cfg.lang||'ru-RU';
+  if(aiEl('voiceStyle'))aiEl('voiceStyle').value=cfg.style||'soft';
+  if(aiEl('voiceRate'))aiEl('voiceRate').value=cfg.rate||.95;
+  if(aiEl('voicePitch'))aiEl('voicePitch').value=cfg.pitch||1.18;
+  if(!voiceAvailable()){
+    enabled.disabled=true; enabled.checked=false;
+    const p=enabled.closest('.panel')?.querySelector('.live2d-help');if(p)p.textContent='Голос недоступен в этом браузере. Открой ALDUIN в Chrome/Edge на Android или другом браузере с Web Speech API.';
+    return;
+  }
+  const markUser=ev=>{ev.target.dataset.userChanged='1';voiceSave()};
+  aiEl('voiceRate')?.addEventListener('input',markUser);aiEl('voicePitch')?.addEventListener('input',markUser);
+  aiEl('voiceLang')?.addEventListener('change',()=>{refreshALDUINVoices();voiceSave()});
+  aiEl('voiceStyle')?.addEventListener('change',()=>{const r=aiEl('voiceRate'),p=aiEl('voicePitch');if(r)delete r.dataset.userChanged;if(p)delete p.dataset.userChanged;applyVoiceStyle();voiceSave()});
+  aiEl('voiceSelect')?.addEventListener('change',voiceSave);enabled.addEventListener('change',voiceSave);
+  aiEl('voiceTest')?.addEventListener('click',()=>speakALDUIN((aiEl('voiceLang')?.value||'ru-RU').startsWith('ru')?'Привет! Я Альдуин. Теперь я могу говорить.':'Hello! I am Alduin. Now I can speak.'));
+  aiEl('voiceStop')?.addEventListener('click',()=>{try{window.speechSynthesis.cancel()}catch{}voiceSyncTalk(false)});
+  window.speechSynthesis.onvoiceschanged=refreshALDUINVoices;
+  refreshALDUINVoices();
+  if(!alduinVoices.length)setTimeout(refreshALDUINVoices,500);
+}
+
+/* ===== ALDUIN LIVE2D CHARACTER ENGINE ===== */
+function live2dRuntime(){
+  if(window.__alduinLive2DReady) return window.__alduinLive2DReady;
+  return Promise.resolve(false);
+}
+
+let live2dApp=null,live2dModel=null,live2dObjectURLs=[],live2dFiles=new Map(),live2dBasePath='';
+const LIVE2D_KEY='alduin_live2d_v1';
+function live2dStatus(text,on=false){const e=aiEl('live2dStatus');if(!e)return;e.classList.toggle('online',on);const s=e.querySelector('span');if(s)s.textContent=text}
+function normPath(x){return String(x||'').replace(/\\/g,'/').replace(/^\.\//,'').replace(/^\//,'').split('/').filter(Boolean).join('/')}
+function revokeLiveURLs(){for(const u of live2dObjectURLs){try{URL.revokeObjectURL(u)}catch{}}live2dObjectURLs=[]}
+function fileKey(name){return normPath(name).toLowerCase()}
+function findLiveFile(ref, baseDir=''){
+  const raw=normPath(ref);
+  const candidates=[];
+  if(baseDir && raw) candidates.push(normPath(baseDir+'/'+raw));
+  candidates.push(raw);
+  for(const c of candidates){
+    const hit=live2dFiles.get(fileKey(c));
+    if(hit)return hit;
+  }
+  const base=raw.split('/').pop();
+  if(base){
+    for(const [k,v] of live2dFiles){
+      if(k.split('/').pop()===base)return v;
+    }
+  }
+  return null;
+}
+function makeLiveURL(file){
+  const blob=file?.blob||file;
+  if(!(blob instanceof Blob)) throw new Error('Ресурс Live2D имеет неверный тип: '+typeof blob);
+  const u=URL.createObjectURL(blob); live2dObjectURLs.push(u); return u;
+}
+function rewriteLiveJSON(value, baseDir=''){
+  if(typeof value==='string'){
+    if(!/\.(moc3|png|jpg|jpeg|webp|json|motion3|exp3|physics3|pose3|userdata3|cdi3)$/i.test(value))return value;
+    const f=findLiveFile(value,baseDir);
+    return f ? makeLiveURL(f) : value;
+  }
+  if(Array.isArray(value))return value.map(v=>rewriteLiveJSON(v,baseDir));
+  if(value&&typeof value==='object'){const out={};for(const [k,v] of Object.entries(value))out[k]=rewriteLiveJSON(v,baseDir);return out}
+  return value;
+}
+function chooseModelFile(files){
+  // Prefer a model3 file, but also inspect JSON files so archives with unusual names work.
+  return files.find(f=>/\.model3\.json$/i.test(f.name||f.path||f.webkitRelativePath))
+      || files.find(f=>/\.model\.json$/i.test(f.name||f.path||f.webkitRelativePath))
+      || files.find(f=>/\.json$/i.test(f.name||f.path||f.webkitRelativePath) && /model|file.?references|moc/i.test(f.name||f.path||f.webkitRelativePath));
+}
+function liveFileEntry(path,blob,name){return {path:normPath(path),blob,name:name||String(path).split('/').pop()}}
+async function readLiveText(file){
+  if(file == null) throw new Error('Файл модели не найден.');
+  if(file instanceof Blob){
+    if(typeof file.text === 'function'){
+      try{return await file.text()}catch(e){}
+    }
+    if(typeof file.arrayBuffer === 'function'){
+      try{const buf=await file.arrayBuffer();return new TextDecoder('utf-8').decode(buf)}catch(e){}
+    }
+    if(typeof FileReader !== 'undefined'){
+      return await new Promise((resolve,reject)=>{
+        const reader=new FileReader();
+        reader.onload=()=>resolve(String(reader.result ?? ''));
+        reader.onerror=()=>reject(reader.error || new Error('Не удалось прочитать файл модели.'));
+        reader.readAsText(file);
+      });
+    }
+  }
+  if(typeof file === 'string'){
+    const s=file.trim();
+    if(s.startsWith('{') || s.startsWith('[')) return file;
+    const res=await fetch(file,{cache:'no-store'});
+    if(!res.ok) throw new Error('Не удалось загрузить '+file+' (HTTP '+res.status+').');
+    return await res.text();
+  }
+  throw new Error('Файл модели имеет неподдерживаемый тип.');
+}
+async function readModelFromFiles(files){
+  revokeLiveURLs(); live2dFiles=new Map();
+  const entries=[];
+  for(const f of files){
+    const path=normPath(f.path||f.webkitRelativePath||f.name);
+    if(!path)continue;
+    const blob=f instanceof Blob ? f : f.blob;
+    const entry=liveFileEntry(path,blob,f.name||path.split('/').pop());
+    entries.push(entry); live2dFiles.set(fileKey(path),entry);
+  }
+  if(!entries.length)throw new Error('Не выбраны файлы модели.');
+  const modelFile=chooseModelFile(entries);
+  if(!modelFile)throw new Error('Не найден файл модели .model3.json. В ZIP должна быть готовая Cubism 3/4 модель.');
+  const raw=await readLiveText(modelFile.blob);
+  let json;
+  try{json=JSON.parse(raw)}catch(e){throw new Error('Файл '+modelFile.name+' содержит некорректный JSON.')}
+  if(!json.FileReferences || !json.FileReferences.Moc)throw new Error('Это не файл Cubism model3.json: отсутствует FileReferences.Moc.');
+  const modelDir=modelFile.path.includes('/')?modelFile.path.slice(0,modelFile.path.lastIndexOf('/')):'';
+  const rewritten=rewriteLiveJSON(json,modelDir);
+  const jsonURL=URL.createObjectURL(new Blob([JSON.stringify(rewritten)],{type:'application/json'})); live2dObjectURLs.push(jsonURL);
+  return {jsonURL,name:modelFile.name,files:entries.length};
+}
+async function readModelFromZip(file){
+  await live2dRuntime();
+  if(!(file instanceof Blob)) throw new Error('ZIP-файл не распознан браузером.');
+  if(!window.JSZip) throw new Error('JSZip не загрузился. Проверь интернет и перезагрузи страницу.');
+  const zip=await JSZip.loadAsync(file);
+  const files=[];
+  for(const name of Object.keys(zip.files)){
+    const entry=zip.files[name];
+    if(entry.dir || /(^|\/)__MACOSX(\/|$)|\.DS_Store$/i.test(name))continue;
+    const blob=await entry.async('blob');
+    files.push(liveFileEntry(name,blob,name.split('/').pop()));
+  }
+  if(!files.some(f=>/\.model3\.json$/i.test(f.path))){
+    // Some packs use a custom filename; let the JSON inspector choose it.
+    const possible=files.filter(f=>/\.json$/i.test(f.path));
+    let found=false;
+    for(const f of possible){try{const j=JSON.parse(await readLiveText(f.blob));if(j?.FileReferences?.Moc){found=true;break}}catch{}}
+    if(!found)throw new Error('В ZIP не найден Cubism model3.json. Добавь .model3.json вместе с .moc3 и текстурами.');
+  }
+  return readModelFromFiles(files);
+}
+function live2dResize(){if(!live2dApp||!live2dModel)return;const host=aiEl('live2dStage');const w=host.clientWidth,h=host.clientHeight;live2dApp.renderer.resize(w,h);live2dCenter()}
+function live2dCenter(){if(!live2dModel||!live2dApp)return;const host=aiEl('live2dStage');const b=live2dModel.getLocalBounds();const scale=Math.min((host.clientWidth*.78)/Math.max(1,b.width),(host.clientHeight*.86)/Math.max(1,b.height));const userScale=parseFloat(aiEl('live2dScale')?.value||'1');live2dModel.scale.set(scale*userScale);live2dModel.anchor?.set?.(.5,.5);live2dModel.x=host.clientWidth/2;live2dModel.y=host.clientHeight*.94}
+function live2dParam(id,val){try{const core=live2dModel?.internalModel?.coreModel;if(!core)return false;const idx=core.getParameterIndex(id);if(idx>=0){core.setParameterValueByIndex(idx,val);return true}}catch{}return false}
+function live2dMotion(name){if(!live2dModel)return false;try{
+  const groups=live2dModel.internalModel?.motionManager?.motionGroups||live2dModel.internalModel?.motionManager?.motions;
+  const candidates={tap:['tap_body','TapBody','tap'],wave:['wave','Wave','greet'],nod:['nod','Nod','yes'],shake:['shake','Shake','no'],auto:['Idle','idle','Idle01','idle_01']};
+  const list=candidates[name]||candidates.auto;
+  for(const n of list){try{const r=live2dModel.motion(n);if(r!==false)return true}catch{}}
+  // Fall back to any known motion group from the model JSON.
+  const keys=groups?Object.keys(groups):[]; for(const k of keys){try{const r=live2dModel.motion(k);if(r!==false)return true}catch{}}
+}catch{}return false}
+function live2dEmotion(emotion){
+  if(!live2dModel)return;
+  const map={neutral:[0,0,0],happy:[.25,.08,.15],sad:[-.22,-.08,-.12],angry:[-.45,-.12,-.25],surprised:[.5,.25,.35]};
+  const v=map[emotion]||map.neutral;
+  live2dParam('ParamMouthForm',v[0]); live2dParam('ParamBrowLY',v[1]); live2dParam('ParamBrowRY',v[1]); live2dParam('ParamEyeBallY',v[2]);
+  const cmd=aiEl('live2dCommand');if(cmd)cmd.textContent='Эмоция: '+emotion;
+}
+function live2dTalk(){if(!live2dModel||!aiEl('live2dTalk')?.checked)return;let t=0;clearInterval(window.__liveTalk);window.__liveTalk=setInterval(()=>{t++;const v=t%2?.72:.12;live2dParam('ParamMouthOpenY',v);if(t>16){clearInterval(window.__liveTalk);live2dParam('ParamMouthOpenY',0)}},75)}
+function live2dLookAt(e){if(!live2dModel||!aiEl('live2dLook')?.checked)return;const r=aiEl('live2dStage').getBoundingClientRect();const x=((e.clientX-r.left)/r.width)*2-1,y=((e.clientY-r.top)/r.height)*2-1;live2dParam('ParamEyeBallX',Math.max(-1,Math.min(1,x)));live2dParam('ParamEyeBallY',Math.max(-1,Math.min(1,-y)));live2dParam('ParamAngleX',x*25);live2dParam('ParamAngleY',-y*15)}
+async function loadLive2D(data){
+  const ready=await live2dRuntime();
+  if(!ready || !window.PIXI?.live2d?.Live2DModel)throw new Error('Live2D runtime не загрузился. Все резервные источники недоступны.');
+  if(live2dApp){try{live2dApp.destroy(true,{children:true,texture:true,baseTexture:true})}catch{}live2dApp=null;live2dModel=null}
+  const canvas=aiEl('live2dCanvas'),host=aiEl('live2dStage');
+  live2dApp=new PIXI.Application({view:canvas,autoStart:true,resizeTo:host,transparent:true,antialias:true,resolution:Math.min(2,window.devicePixelRatio||1)});
+  live2dModel=await PIXI.live2d.Live2DModel.from(data.jsonURL,{autoInteract:false,autoUpdate:true});
+  live2dApp.stage.addChild(live2dModel); live2dCenter();
+  live2dModel.on?.('hit',()=>{if(aiEl('live2dAI')?.checked){live2dEmotion('happy');live2dMotion('tap')}});
+  aiEl('live2dEmpty').hidden=true; live2dStatus('MODEL ONLINE',true); aiEl('live2dModelInfo').textContent='✓ '+data.name+' • '+data.files+' файлов • Cubism 3/4';
+  live2dMotion('auto');
+}
+async function live2dLoadFiles(files){try{live2dStatus('LOADING…');const data=await readModelFromFiles(files);await loadLive2D(data);save(LIVE2D_KEY,{name:data.name});toast('Live2D модель загружена')}catch(e){console.error(e);live2dStatus('ERROR');aiEl('live2dModelInfo').textContent='Ошибка: '+e.message;toast('Live2D: '+e.message)}}
+async function live2dLoadZip(file){try{live2dStatus('UNPACKING…');const data=await readModelFromZip(file);await loadLive2D(data);save(LIVE2D_KEY,{name:data.name});toast('Live2D ZIP загружен')}catch(e){console.error(e);live2dStatus('ERROR');aiEl('live2dModelInfo').textContent='Ошибка: '+e.message;toast('Live2D: '+e.message)}}
+async function live2dLoadBundled(){
+  try{
+    live2dStatus('LOADING RUNTIME…');
+    const ready=await live2dRuntime();
+    if(!ready || !window.PIXI?.live2d?.Live2DModel) throw new Error('Live2D runtime не загрузился. Проверь доступ к CDN/Live2D Core.');
+    const modelURL=new URL('alduin-miara.model3.json',document.baseURI).href;
+    const response=await fetch(modelURL,{cache:'no-store'});
+    if(!response.ok) throw new Error('Встроенная модель не найдена (HTTP '+response.status+'). Убедись, что встроенные файлы загружены в GitHub Pages.');
+    const json=await response.json();
+    if(!json?.FileReferences?.Moc)throw new Error('Встроенный model3.json повреждён.');
+    if(live2dApp){try{live2dApp.destroy(true,{children:true,texture:true,baseTexture:true})}catch{}live2dApp=null;live2dModel=null}
+    revokeLiveURLs();
+    const canvas=aiEl('live2dCanvas'),host=aiEl('live2dStage');
+    live2dApp=new PIXI.Application({view:canvas,autoStart:true,resizeTo:host,transparent:true,antialias:true,resolution:Math.min(2,window.devicePixelRatio||1)});
+    // Keep the original same-origin model URL. Relative assets then resolve correctly on GitHub Pages.
+    live2dModel=await PIXI.live2d.Live2DModel.from(modelURL,{autoInteract:false,autoUpdate:true});
+    live2dApp.stage.addChild(live2dModel);
+    live2dCenter();
+    live2dModel.on?.('hit',()=>{if(aiEl('live2dAI')?.checked){live2dEmotion('happy');live2dMotion('tap')}});
+    aiEl('live2dEmpty').hidden=true;
+    live2dStatus('MODEL ONLINE',true);
+    aiEl('live2dModelInfo').textContent='✓ Встроенная Miara • Cubism 3/4 • GitHub Pages';
+    live2dMotion('auto');
+    save(LIVE2D_KEY,{name:'Встроенная Miara',source:'bundled'});
+    toast('Встроенная Live2D загружена');
+  }catch(e){
+    console.error(e);
+    live2dStatus('ERROR');
+    aiEl('live2dModelInfo').textContent='Ошибка встроенной модели: '+e.message;
+    toast('Live2D: '+e.message);
+  }
+}
+function setupLive2D(){
+  aiEl('live2dBundled')?.addEventListener('click',live2dLoadBundled);
+  aiEl('live2dFolder')?.addEventListener('change',e=>{if(e.target.files?.length)live2dLoadFiles([...e.target.files])});
+  aiEl('live2dZip')?.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)live2dLoadZip(f)});
+  aiEl('live2dScale')?.addEventListener('input',live2dCenter); addEventListener('resize',live2dResize,{passive:true});
+  aiEl('live2dCenter')?.addEventListener('click',live2dCenter); aiEl('live2dReset')?.addEventListener('click',()=>{if(live2dModel){live2dModel.rotation=0;live2dCenter();live2dEmotion('neutral')}});
+  aiEl('live2dMotion')?.addEventListener('click',()=>{live2dMotion('auto');live2dEmotion('happy')}); aiEl('live2dBlink')?.addEventListener('click',()=>{live2dParam('ParamEyeLOpen',0);live2dParam('ParamEyeROpen',0);setTimeout(()=>{live2dParam('ParamEyeLOpen',1);live2dParam('ParamEyeROpen',1)},180)});
+  document.querySelectorAll('[data-live-emotion]').forEach(b=>b.addEventListener('click',()=>live2dEmotion(b.dataset.liveEmotion)));
+  aiEl('live2dStage')?.addEventListener('pointermove',live2dLookAt,{passive:true});
+  window.ALDUIN_LIVE2D={
+  applyAICommand({emotion='neutral',motion='auto'}={}){if(!aiEl('live2dAI')?.checked)return;live2dEmotion(emotion);if(motion==='auto')motion='tap';live2dMotion(motion);const c=aiEl('live2dCommand');if(c)c.textContent='AI → '+emotion+' / '+motion;live2dTalk()},
+  autoReact(text){if(!aiEl('live2dAI')?.checked||!live2dModel)return;const t=String(text).toLowerCase();let emotion='neutral';if(/\b(ура|рад|рада|счаст|люблю|😊|❤️|💜|отлично|класс|хаха)/i.test(t))emotion='happy';else if(/(груст|печал|жаль|😢|😭)/i.test(t))emotion='sad';else if(/(зл|раздраж|ненавиж|😡|😠)/i.test(t))emotion='angry';else if(/(вау|невероят|удив|ого|😮|шок)/i.test(t))emotion='surprised';live2dEmotion(emotion);live2dMotion('auto');live2dTalk();const c=aiEl('live2dCommand');if(c)c.textContent='AI → auto / '+emotion}
+};
+}
+document.addEventListener('DOMContentLoaded',setupLive2D,{once:true});
+document.addEventListener('DOMContentLoaded',setupALDUINVoice,{once:true});
+
+async function boot(){const safety=setTimeout(()=>{$('loader')?.classList.add('hide')},1000);try{notes=load(KEY.notes,[]);loadProfile();wire();renderAll();try{await openDB();photos=await dbAll();renderAll()}catch(e){console.warn('Gallery DB unavailable',e)}startFPS();}catch(e){console.error('ALDUIN startup',e)}finally{clearTimeout(safety);$('loader')?.classList.add('hide')}}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();

@@ -1,0 +1,9 @@
+{
+  "name": "ALDUIN X",
+  "short_name": "ALDUIN",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#07030c",
+  "theme_color": "#08030d",
+  "lang": "ru"
+}

@@ -1,0 +1,19 @@
+{
+  "Version": 3,
+  "FileReferences": {
+    "Moc": "alduin-miara.moc3",
+    "Textures": ["alduin-miara-texture.png"],
+    "Physics": "alduin-miara.physics3.json",
+    "DisplayInfo": "alduin-miara.cdi3.json",
+    "Motions": {
+      "Idle": [{"File": "alduin-miara-idle.motion3.json"}],
+      "Tap": [{"File": "alduin-miara-tap.motion3.json"}],
+      "Flic": [{"File": "alduin-miara-flic.motion3.json"}]
+    }
+  },
+  "Groups": [
+    {"Target":"Parameter","Name":"LipSync","Ids":[]},
+    {"Target":"Parameter","Name":"EyeBlink","Ids":[]}
+  ],
+  "HitAreas": []
+}
